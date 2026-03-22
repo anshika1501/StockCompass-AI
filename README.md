@@ -1,5 +1,5 @@
 # StockCompass
-[![LOC](https://badge.aiyu.co.in/repo-batch?owner=anshika1501&repo=Stock-3.0&fields=loc)](https://github.com/anshika1501/Stock-3.0)
+[![LOC](https://badge.aiyu.co.in/repo-batch?owner=anshika1501&repo=Stock-3.0&fields=loc)](https://github.com/anshika1501/StockCompass-AI)
 
 StockCompass is a comprehensive, AI-powered stock analysis platform featuring curated industry portfolios, stock clustering, and predictive trajectory forecasting using machine learning models.
 
