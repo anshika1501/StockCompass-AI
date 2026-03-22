@@ -1,0 +1,35 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "sector-banking",
+      "description": "Banking and Finance",
+      "imageUrl": "https://picsum.photos/seed/bank/800/600",
+      "imageHint": "bank building"
+    },
+    {
+      "id": "sector-it",
+      "description": "Information Technology",
+      "imageUrl": "https://picsum.photos/seed/tech/800/600",
+      "imageHint": "server farm"
+    },
+    {
+      "id": "sector-automotive",
+      "description": "Automotive Industry",
+      "imageUrl": "https://picsum.photos/seed/car/800/600",
+      "imageHint": "electric car"
+    },
+    {
+      "id": "sector-energy",
+      "description": "Energy Sector",
+      "imageUrl": "https://picsum.photos/seed/energy/800/600",
+      "imageHint": "wind turbine"
+    },
+    {
+      "id": "sector-healthcare",
+      "description": "Healthcare Sector",
+      "imageUrl": "https://picsum.photos/seed/health/800/600",
+      "imageHint": "medical research"
+    }
+  ]
+}
