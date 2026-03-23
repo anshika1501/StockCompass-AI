@@ -38,6 +38,14 @@ echo [INFO] Preparing backend launch script...
     echo.
     echo echo [INFO] Current directory: %%cd%%
     echo.
+    echo set /p CLEAN_PYC=Do you want to remove .pyc files and __pycache__ folders? (y/n): 
+    echo if /i "%%CLEAN_PYC%%"=="y" ^(
+    echo     echo [INFO] Cleaning Python bytecode...
+    echo     for /r %%F in ^("*.pyc"^) do del /f /q "%%F" ^>nul 2^>^&1
+    echo     for /d /r %%D in ^("__pycache__"^) do rd /s /q "%%D" ^>nul 2^>^&1
+    echo     echo [INFO] Bytecode cleanup complete.
+    echo ^)
+    echo.
     echo if not exist ".venv\Scripts\activate.bat" ^(
     echo     echo [INFO] Creating Python virtual environment...
     echo     python -m venv .venv

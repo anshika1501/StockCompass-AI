@@ -10,6 +10,14 @@ if errorlevel 1 (
 
 echo [INFO] Current directory: %cd%
 
+set /p CLEAN_PYC=Do you want to remove .pyc files and __pycache__ folders? (y/n): 
+if /i "%CLEAN_PYC%"=="y" (
+    echo [INFO] Cleaning Python bytecode...
+    for /r %%F in ("*.pyc") do del /f /q "%%F" >nul 2>&1
+    for /d /r %%D in ("__pycache__") do rd /s /q "%%D" >nul 2>&1
+    echo [INFO] Bytecode cleanup complete.
+)
+
 if not exist ".venv\Scripts\activate.bat" (
     echo [INFO] Creating Python virtual environment...
     python -m venv .venv
