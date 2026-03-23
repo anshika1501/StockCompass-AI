@@ -14,8 +14,233 @@ Before you begin, ensure you have the following installed on your machine:
 - npm or yarn
 - [Python](https://www.python.org/) 3.10+
 - Git
-- [PostgreSQL](https://www.postgresql.org/) 14+ (with pgvector extension)
-- [Ollama](https://ollama.com/download) (for local LLM + embeddings)
+- [Docker](https://www.docker.com/) + Docker Compose (recommended)
+- [PostgreSQL](https://www.postgresql.org/) 14+ (optional if not using Docker)
+- [Ollama](https://ollama.com/download) (optional if not using Docker)
+
+---
+
+# 🐳 Running StockCompass with Docker (Recommended)
+
+This setup runs:
+
+- PostgreSQL 16 + pgvector
+- pgAdmin 4
+- Ollama (LLM + Embeddings)
+- Auto model installation
+- Persistent volumes
+- Auto restart
+
+---
+
+## ✅ 1️⃣ Install Docker
+
+Install:
+
+- Docker
+- Docker Compose
+
+Verify:
+
+```bash
+docker --version
+docker compose version
+```
+
+---
+
+## ✅ 2️⃣ Create docker-compose.yml (Project Root)
+
+Create a file:
+
+```bash
+docker-compose.yml
+```
+
+Paste:
+
+```yaml
+services:
+   pgvector-db:
+      image: pgvector/pgvector:pg16
+      container_name: pgvector-db
+      restart: unless-stopped
+      environment:
+         POSTGRES_USER: postgres
+         POSTGRES_PASSWORD: postgres
+         POSTGRES_DB: stocks
+      ports:
+         - "5432:5432"
+      volumes:
+         - pgdata:/var/lib/postgresql/data
+         - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      networks:
+         - stock-network
+
+   pgadmin:
+      image: dpage/pgadmin4
+      container_name: pgadmin
+      restart: unless-stopped
+      environment:
+         PGADMIN_DEFAULT_EMAIL: admin@admin.com
+         PGADMIN_DEFAULT_PASSWORD: admin
+      ports:
+         - "5050:80"
+      depends_on:
+         - pgvector-db
+      networks:
+         - stock-network
+
+   ollama:
+      image: ollama/ollama
+      container_name: ollama
+      restart: unless-stopped
+      ports:
+         - "11434:11434"
+      volumes:
+         - ollama:/root/.ollama
+      networks:
+         - stock-network
+      entrypoint: >
+         /bin/sh -c "
+         ollama serve &
+         sleep 8 &&
+         ollama pull tinyllama &&
+         ollama pull qwen3-embedding:0.6b &&
+         wait
+         "
+
+volumes:
+   pgdata:
+   ollama:
+
+networks:
+   stock-network:
+```
+
+---
+
+## ✅ 3️⃣ Create init.sql (Same Folder)
+
+Create:
+
+```bash
+init.sql
+```
+
+Paste:
+
+```sql
+CREATE USER stocks_user WITH PASSWORD 'change-me';
+GRANT ALL PRIVILEGES ON DATABASE stocks TO stocks_user;
+ALTER DATABASE stocks OWNER TO stocks_user;
+
+\c stocks
+
+CREATE EXTENSION IF NOT EXISTS vector;
+
+ALTER SCHEMA public OWNER TO stocks_user;
+GRANT ALL ON SCHEMA public TO stocks_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO stocks_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO stocks_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO stocks_user;
+```
+
+---
+
+## ✅ 4️⃣ Start All Services
+
+```bash
+docker compose up -d
+```
+
+First run will take a few minutes because Ollama downloads:
+
+- tinyllama
+- qwen3-embedding:0.6b
+
+---
+
+## ✅ 5️⃣ Access Services
+
+| Service    | URL                                              |
+| ---------- | ------------------------------------------------ |
+| pgAdmin    | [http://localhost:5050](http://localhost:5050)   |
+| Ollama API | [http://localhost:11434](http://localhost:11434) |
+| PostgreSQL | localhost:5432                                   |
+
+---
+
+## ✅ 6️⃣ Connect pgAdmin
+
+Login:
+
+```text
+Email: admin@admin.com
+Password: admin
+```
+
+Add new server:
+
+| Field    | Value       |
+| -------- | ----------- |
+| Host     | pgvector-db |
+| Port     | 5432        |
+| Username | stocks_user |
+| Password | change-me   |
+| Database | stocks      |
+
+---
+
+## ✅ 7️⃣ Backend .env Configuration
+
+Update `backend/.env`:
+
+```env
+POSTGRES_DB=stocks
+POSTGRES_USER=stocks_user
+POSTGRES_PASSWORD=change-me
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_CHAT_MODEL=tinyllama
+OLLAMA_EMBED_MODEL=qwen3-embedding:0.6b
+```
+
+---
+
+## ✅ 8️⃣ Run Backend (After Docker Is Running)
+
+```bash
+cd backend
+python manage.py migrate
+python manage.py build_stock_embeddings --force
+python manage.py runserver
+```
+
+---
+
+## 🛑 Stop Everything
+
+```bash
+docker compose down
+```
+
+To delete volumes:
+
+```bash
+docker compose down -v
+```
+
+---
+
+# 🔥 Production Notes
+
+- Change default passwords
+- Use `.env` file for secrets
+- Enable firewall rules
+- Consider reverse proxy (Nginx)
 
 ---
 
@@ -66,7 +291,7 @@ The backend exposes the core API, handles stock data retrieval (via yfinance), a
    OLLAMA_EMBED_MODEL=qwen3-embedding:0.6b
    ```
 
-5. **Prepare PostgreSQL with pgvector (choose one)**
+5. **Prepare PostgreSQL with pgvector**
 
    **Option A — Local Postgres install**
    - Start Postgres and create DB/user (adjust credentials as needed):
@@ -87,27 +312,6 @@ The backend exposes the core API, handles stock data retrieval (via yfinance), a
      \c stocks
      CREATE EXTENSION IF NOT EXISTS vector;
      ```
-
-   **Option B — Dockerized pgvector (PG16)**
-   ```bash
-   docker pull pgvector/pgvector:pg16
-   docker run -d --name pgvector-db -e POSTGRES_PASSWORD=postgres -p 5432:5432 pgvector/pgvector:pg16
-   docker exec -it pgvector-db psql -U postgres -d postgres
-   ```
-   Then inside psql:
-   ```sql
-   CREATE DATABASE stocks;
-   CREATE USER stocks_user WITH PASSWORD 'change-me';
-   GRANT ALL PRIVILEGES ON DATABASE stocks TO stocks_user;
-   ALTER DATABASE stocks OWNER TO stocks_user;
-   \c stocks
-   CREATE EXTENSION IF NOT EXISTS vector;
-   ALTER SCHEMA public OWNER TO stocks_user;
-   GRANT ALL ON SCHEMA public TO stocks_user;
-   GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO stocks_user;
-   GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO stocks_user;
-   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO stocks_user;
-   ```
 
 6. **Install Ollama (WSL/mac/Linux) and pull required models**
    - Install Ollama (WSL-friendly):
