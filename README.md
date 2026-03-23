@@ -186,8 +186,8 @@ Add new server:
 | -------- | ----------- |
 | Host     | pgvector-db |
 | Port     | 5432        |
-| Username | stocks_user |
-| Password | change-me   |
+| Username | postgres    |
+| Password | postgres    |
 | Database | stocks      |
 
 ---
