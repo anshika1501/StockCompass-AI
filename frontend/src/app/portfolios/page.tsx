@@ -3,6 +3,7 @@ import SectorCard from "@/components/SectorCard";
 import { getSectors } from "@/lib/stock-data";
 import { TrendingUp, BarChart3, ShieldCheck, PieChart, ChevronLeft } from "lucide-react";
 import Link from "next/link";
+import UserBanner from "@/components/UserBanner";
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,9 @@ export default async function Portfolios() {
                     <ChevronLeft className="h-4 w-4 mr-1 group-hover:-translate-x-1 transition-transform" />
                     Back to Home
                 </Link>
+
+                <UserBanner />
+
                 <section className="mb-12 max-w-2xl">
                     <h1 className="text-4xl font-bold font-headline text-primary mb-4 leading-tight">
                         Industry Portfolios

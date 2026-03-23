@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Compass, Search, Loader2, User as UserIcon, LogOut, ChevronDown, Sparkles } from "lucide-react";
+import { Compass, Search, Loader2, User as UserIcon, LogOut, ChevronDown, Sparkles, Home } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,19 +22,16 @@ export default function Navigation() {
   const [loading, setLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [user, setUser] = useState<{ name: string, email: string } | null>(null);
-  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const userMenuRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    setMounted(true);
     function handleClickOutside(e: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setShowDropdown(false);
-      }
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setShowUserMenu(false);
       }
     }
 
@@ -100,9 +97,8 @@ export default function Navigation() {
     localStorage.removeItem("stock_compass_user");
     localStorage.removeItem("stock_compass_token");
     setUser(null);
-    setShowUserMenu(false);
     window.dispatchEvent(new Event("auth_change"));
-    router.push("/");
+    window.location.href = "/";
   };
 
   return (
@@ -115,7 +111,7 @@ export default function Navigation() {
           <span className="text-xl font-headline font-bold text-primary tracking-tight">StockCompass</span>
         </Link>
 
-        {user && (
+        {mounted && user && (
           <div className="hidden md:flex flex-1 max-w-md mx-8 relative" ref={wrapperRef}>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             {loading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
@@ -152,7 +148,7 @@ export default function Navigation() {
         )}
 
         <nav className="flex items-center gap-6">
-          {user && (
+          {mounted && user && (
             <>
               <Link href="/portfolios" className="text-sm font-medium hover:text-primary transition-colors">Portfolios</Link>
               
@@ -198,38 +194,44 @@ export default function Navigation() {
             </>
           )}
 
-          {user ? (
-            <div className="relative" ref={userMenuRef}>
-              <button
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 text-sm font-medium bg-secondary/50 hover:bg-secondary px-3 py-1.5 rounded-lg transition-colors border border-border/50"
-              >
-                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  <UserIcon className="h-3.5 w-3.5" />
-                </div>
-                {user.name}
-              </button>
-
-              {showUserMenu && (
-                <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border z-50 py-1 overflow-hidden">
-                  <div className="px-4 py-2 border-b border-border/50 mb-1 bg-muted/20">
+          {mounted ? (
+            user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger className="flex items-center gap-2 text-sm font-medium bg-secondary/50 hover:bg-secondary px-3 py-1.5 rounded-lg transition-colors border border-border/50 outline-none">
+                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    <UserIcon className="h-3.5 w-3.5" />
+                  </div>
+                  {user.name}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-border/50 bg-muted/20">
                     <p className="text-sm font-bold text-foreground truncate">{user.name}</p>
                     <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                   </div>
-                  <button
-                    onClick={handleSignOut}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 transition-colors text-left font-medium"
+                  
+                  <DropdownMenuItem asChild className="cursor-pointer py-3 text-sm font-medium">
+                    <Link href="/" className="w-full flex items-center gap-2">
+                      <Home className="h-4 w-4" />
+                      Home Page
+                    </Link>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem 
+                    onClick={handleSignOut} 
+                    className="cursor-pointer py-3 text-sm font-medium text-rose-600 focus:text-rose-600 focus:bg-rose-50 border-t border-border/50 rounded-none w-full flex items-center gap-2"
                   >
                     <LogOut className="h-4 w-4" />
                     Sign Out
-                  </button>
-                </div>
-              )}
-            </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link href="/login" className="text-sm font-medium bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors shadow-sm whitespace-nowrap">
+                Sign In
+              </Link>
+            )
           ) : (
-            <Link href="/login" className="text-sm font-medium bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors shadow-sm whitespace-nowrap">
-              Sign In
-            </Link>
+            <div className="w-[84px] h-[36px] bg-secondary/50 animate-pulse rounded-lg"></div>
           )}
         </nav>
       </div>

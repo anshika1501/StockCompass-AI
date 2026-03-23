@@ -21,9 +21,18 @@ export function LoginClient() {
         }
     }, [searchParams]);
 
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!email || !password) {
+    const handleLogin = async (e?: React.FormEvent, isDemo = false) => {
+        if (e) e.preventDefault();
+        
+        const loginEmail = isDemo ? "demo@example.com" : email;
+        const loginPassword = isDemo ? "demo1234" : password;
+
+        if (isDemo) {
+            setEmail(loginEmail);
+            setPassword(loginPassword);
+        }
+
+        if (!loginEmail || !loginPassword) {
             setError("Email and password are required.");
             return;
         }
@@ -33,10 +42,23 @@ export function LoginClient() {
         setSuccessMsg("");
 
         try {
+            // Auto-register the demo user if they don't exist yet
+            if (isDemo) {
+                try {
+                    await fetch(`${API_BASE}/register/`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email: loginEmail, password: loginPassword, name: "Demo User" }),
+                    });
+                } catch (e) {
+                    // Ignore errors if account already exists
+                }
+            }
+
             const res = await fetch(`${API_BASE}/login/`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ email: loginEmail, password: loginPassword }),
             });
 
             const data = await res.json();
@@ -53,7 +75,7 @@ export function LoginClient() {
             }
 
             // Redirect
-            router.push("/");
+            router.push("/portfolios");
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -131,20 +153,31 @@ export function LoginClient() {
                             </div>
                         )}
 
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 rounded-xl transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 mt-6 group disabled:opacity-70"
-                        >
-                            {loading ? (
-                                <Loader2 className="h-5 w-5 animate-spin" />
-                            ) : (
-                                <>
-                                    Sign In
-                                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                                </>
-                            )}
-                        </button>
+                        <div className="space-y-3 mt-6">
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 rounded-xl transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 group disabled:opacity-70"
+                            >
+                                {loading ? (
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                ) : (
+                                    <>
+                                        Sign In
+                                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                                    </>
+                                )}
+                            </button>
+                            
+                            <button
+                                type="button"
+                                onClick={(e) => handleLogin(e, true)}
+                                disabled={loading}
+                                className="w-full bg-secondary hover:bg-secondary/80 text-foreground font-semibold py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-70 border border-border"
+                            >
+                                Sign in as Demo User
+                            </button>
+                        </div>
                     </form>
 
                     <div className="mt-8 text-center text-sm text-muted-foreground">

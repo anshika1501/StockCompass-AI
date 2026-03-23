@@ -87,15 +87,26 @@ if DB_ENGINE == 'sqlite':
     }
 else:
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('POSTGRES_DB', 'stocks'),
-            'USER': os.environ.get('POSTGRES_USER', 'stocks_user'),
-            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'change-me'),
-            'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
-            'PORT': os.environ.get('POSTGRES_PORT', '5432'),
-        }
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'stocks',
+        'USER': 'stocks_user',
+        'PASSWORD': 'change-me',
+        'HOST': 'localhost',   # Docker same machine pe hai
+        'PORT': '5432',
     }
+}
+
+    # DATABASES = {
+    #     'default': {
+    #         'ENGINE': 'django.db.backends.postgresql',
+    #         'NAME': os.environ.get('POSTGRES_DB', 'stocks'),
+    #         'USER': os.environ.get('POSTGRES_USER', 'stocks_user'),
+    #         'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'change-me'),
+    #         'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
+    #         'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+    #     }
+    # }
 
 
 # Password validation
