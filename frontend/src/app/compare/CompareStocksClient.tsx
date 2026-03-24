@@ -155,15 +155,26 @@ export default function CompareStocksClient() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const symbols = useMemo(() => compareList.map((s) => s.symbol), [compareList]);
+  const symbols = useMemo(
+    () =>
+      compareList
+        .map((s) => (s.symbol || "").trim().toUpperCase())
+        .filter((s) => s.length > 0),
+    [compareList]
+  );
 
   const runAnalysis = async () => {
-    if (symbols.length < 2) return;
+    if (symbols.length < 2) {
+      setError("Please select at least 2 valid stocks.");
+      return;
+    }
+    setData(null);
     setLoading(true);
     setError(null);
     try {
       const result = await fetchCompareAnalysis(symbols, period);
       setData(result);
+      setActiveTab("Overview");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Analysis failed. Please try again.");
     } finally {
@@ -517,7 +528,7 @@ export default function CompareStocksClient() {
                 </button>
               ))}
               <div className="flex-1" />
-              <button onClick={runAnalysis} disabled={symbols.length < 2 || loading} className="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+              <button type="button" onClick={runAnalysis} disabled={loading} className="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                 {loading ? <Loader2 size={15} className="animate-spin" /> : <PlusCircle size={15} />}
                 {loading ? "Analysing…" : "Run Analysis"}
               </button>
