@@ -2,16 +2,17 @@
 
 import { usePathname } from "next/navigation";
 import ChatFab from "./ChatFab";
+import DashboardShell from "./dashboard/DashboardShell";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  
-  // Don't show the old ChatFab on the home page since we have the new premium one
   const isHomePage = pathname === "/";
+  const isAuthPage = pathname?.startsWith("/login") || pathname?.startsWith("/register");
+  const isDashboardRoute = !isHomePage && !isAuthPage;
 
   return (
     <>
-      {children}
+      {isDashboardRoute ? <DashboardShell>{children}</DashboardShell> : children}
       {!isHomePage && <ChatFab />}
     </>
   );
