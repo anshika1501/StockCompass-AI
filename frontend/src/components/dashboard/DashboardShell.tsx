@@ -10,15 +10,17 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-slate-800 md:block">
+    <div className="min-h-screen bg-white">
+      {/* Sidebar - Dark theme preserved */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-slate-800 bg-slate-950 md:block">
         <SidebarNav />
       </aside>
 
-      <div className="sticky top-0 z-30 flex h-16 items-center border-b border-slate-800 bg-slate-950/95 px-4 backdrop-blur md:hidden">
+      {/* Mobile Top Header - Updated for white theme */}
+      <div className="sticky top-0 z-30 flex h-16 items-center border-b border-gray-200 bg-white/95 px-4 backdrop-blur md:hidden">
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-slate-200 hover:bg-slate-800 hover:text-white">
+            <Button variant="ghost" size="icon" className="text-gray-900 hover:bg-gray-100">
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
@@ -26,11 +28,11 @@ export default function DashboardShell({ children }: { children: React.ReactNode
             <SidebarNav onNavigate={() => setMobileOpen(false)} />
           </SheetContent>
         </Sheet>
-        <p className="ml-3 text-sm font-semibold tracking-wide text-slate-200">StockCompass</p>
+        <p className="ml-3 text-sm font-bold tracking-tight text-[#000000]">StockCompass</p>
       </div>
 
       <main className="md:ml-72">
-        <div className="min-h-screen bg-slate-900/50">{children}</div>
+        <div className="min-h-screen bg-[#FFFFFF] p-6 lg:p-8">{children}</div>
       </main>
     </div>
   );

@@ -27,47 +27,49 @@ export default async function SectorPage({ params }: { params: { sector: string 
   const { sector, stocks } = sectorData;
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className="min-h-screen bg-white">
       <Navigation />
 
-      <main className="container mx-auto px-4 mt-8">
-        <Link href="http://localhost:9002/portfolios" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-6 transition-colors group">
-          <ChevronLeft className="h-4 w-4 mr-1 group-hover:-translate-x-1 transition-transform" />
-          Back to Portfolios
+      <main className="container mx-auto px-6 lg:px-12 mt-12 pb-24">
+        <Link href="/portfolios" className="inline-flex items-center text-sm font-black text-[#1F2937] hover:text-[#4F8DF7] mb-10 transition-all group uppercase tracking-widest">
+          <ChevronLeft className="h-5 w-5 mr-2 group-hover:-translate-x-1 transition-transform" />
+          Market Sectors
         </Link>
 
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
-          <div className="max-w-xl">
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-xs font-bold uppercase tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded">Portfolio</span>
-              <h1 className="text-4xl font-bold font-headline">{sector.name}</h1>
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-10">
+          <div className="max-w-2xl">
+            <div className="flex flex-col gap-3 mb-4">
+              <span className="text-[11px] font-black uppercase tracking-[0.2em] text-[#4F8DF7] bg-blue-50 border border-blue-100 px-3 py-1 rounded-lg w-fit shadow-sm">Industry Analysis</span>
+              <h1 className="text-5xl font-black font-headline text-[#000000] tracking-tighter leading-none">{sector.name}</h1>
             </div>
-            <p className="text-muted-foreground">{sector.description}</p>
+            <p className="text-xl text-[#1F2937] font-medium opacity-80 leading-relaxed">{sector.description}</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-2 bg-white">
-              <Filter className="h-4 w-4" /> Filter
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="lg" className="gap-2 bg-white border-gray-200 text-[#000000] font-black text-xs uppercase tracking-widest hover:bg-gray-50 rounded-xl px-6 h-12 shadow-sm">
+              <Filter className="h-4 w-4" /> Refine
             </Button>
-            <Button variant="outline" size="sm" className="gap-2 bg-white">
-              <LayoutGrid className="h-4 w-4" /> View
+            <Button variant="outline" size="lg" className="gap-2 bg-white border-gray-200 text-[#000000] font-black text-xs uppercase tracking-widest hover:bg-gray-50 rounded-xl px-6 h-12 shadow-sm">
+              <LayoutGrid className="h-4 w-4" /> Layout
             </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-20">
           {stocks.map((stock) => (
             <StockCard key={stock.ticker} stock={stock} sectorSlug={sectorId} />
           ))}
         </div>
 
         {stocks.length === 0 && (
-          <div className="text-center py-20 bg-white rounded-3xl">
-            <p className="text-muted-foreground">No stocks found in this portfolio.</p>
+          <div className="text-center py-32 bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200">
+            <p className="text-[#1F2937] font-black uppercase tracking-widest text-sm opacity-40">No assets detected in this sector.</p>
           </div>
         )}
 
         {/* Portfolio Analysis Section */}
-        <PortfolioAnalysis sectorSlug={sectorId} />
+        <div className="mt-24 border-t border-gray-100 pt-20">
+           <PortfolioAnalysis sectorSlug={sectorId} />
+        </div>
       </main>
     </div>
   );

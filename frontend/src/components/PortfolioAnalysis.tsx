@@ -390,91 +390,88 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
     const corrKeys = Object.keys(correlation || {});
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-12">
             {/* ── Stock Metrics Table ──────────────────────────────────── */}
-            <Card className="border-none shadow-sm bg-white overflow-hidden">
-                <CardHeader className="bg-primary/5 border-b">
+            <Card className="border border-gray-200 shadow-sm bg-white rounded-3xl overflow-hidden">
+                <CardHeader className="bg-gray-50/50 border-b border-gray-100 px-8 py-6">
                     <div className="flex items-center justify-between">
                         <div>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <BrainCircuit size={18} className="text-primary" />
-                                Portfolio Analysis
+                            <CardTitle className="text-2xl font-black text-[#000000] tracking-tight flex items-center gap-3">
+                                <div className="bg-[#4F8DF7] p-2 rounded-xl shadow-lg shadow-[#4F8DF7]/15">
+                                    <BrainCircuit size={20} className="text-white" />
+                                </div>
+                                Portfolio Analytics
                             </CardTitle>
-                            <p className="text-xs text-muted-foreground mt-1">PE Ratio, Discount Level & Opportunity Score for each stock</p>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1.5 ml-11">Quantitative metrics and opportunity evaluation</p>
                         </div>
                         {compareList.length > 0 && (
                             <button
                                 onClick={() => router.push('/compare')}
-                                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+                                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#4F8DF7] text-white text-[11px] font-black uppercase tracking-widest hover:bg-[#2563EB] transition-all shadow-lg shadow-[#4F8DF7]/20 active:scale-95"
                             >
                                 <GitCompare size={15} />
-                                Compare ({compareList.length})
+                                Compare Results ({compareList.length})
                             </button>
                         )}
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-border">
+                        <table className="min-w-full divide-y divide-gray-100">
                             <thead>
-                                <tr className="bg-secondary/50">
-                                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest">Symbol</th>
-                                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest">Current Price</th>
-                                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest">PE Min</th>
-                                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest">PE Max</th>
-                                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest">Current PE</th>
-                                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest">PE Avg</th>
-                                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest">Expected Price</th>
-                                    <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-widest">Recommendation</th>
-                                    <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-widest">Discount Level</th>
-                                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest">Opportunity Score</th>
-                                    <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-widest">Actions</th>
+                                <tr className="bg-blue-50/30">
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-[#000000] uppercase tracking-[0.15em]">Symbol</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-black text-[#000000] uppercase tracking-[0.15em]">Market Price</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-black text-[#000000] uppercase tracking-[0.15em]">PE Range (Min/Max)</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-black text-[#000000] uppercase tracking-[0.15em]">Current PE</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-black text-[#000000] uppercase tracking-[0.15em]">Expected Value</th>
+                                    <th className="px-6 py-4 text-center text-[10px] font-black text-[#000000] uppercase tracking-[0.15em]">Signal</th>
+                                    <th className="px-6 py-4 text-center text-[10px] font-black text-[#000000] uppercase tracking-[0.15em]">Opp. Score</th>
+                                    <th className="px-6 py-4 text-center text-[10px] font-black text-[#000000] uppercase tracking-[0.15em]">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-border">
+                            <tbody className="divide-y divide-gray-50">
                                 {stocks.map((stock) => (
-                                    <tr key={stock.symbol} className="hover:bg-secondary/30 transition-colors">
-                                        <td className="px-4 py-3 text-sm">
-                                            <span className="font-bold text-primary">{stock.symbol}</span>
-                                            <span className="ml-2 text-xs text-muted-foreground">{stock.company_name}</span>
+                                    <tr key={stock.symbol} className="hover:bg-blue-50/20 transition-colors group">
+                                        <td className="px-6 py-5 whitespace-nowrap">
+                                            <div className="flex flex-col">
+                                                <span className="font-black text-[#4F8DF7] text-sm tracking-tighter">{stock.symbol}</span>
+                                                <span className="text-[11px] font-bold text-gray-400 uppercase truncate max-w-[140px]">{stock.company_name}</span>
+                                            </div>
                                         </td>
-                                        <td className="px-4 py-3 text-right text-sm font-mono font-medium">
+                                        <td className="px-6 py-5 text-right font-black text-[#000000] text-sm tracking-tighter">
                                             ₹{stock.current_price?.toLocaleString() ?? '-'}
                                         </td>
-                                        <td className="px-4 py-3 text-right text-sm font-mono">
-                                            {stock.pe_min != null ? stock.pe_min.toFixed(2) : '-'}
+                                        <td className="px-6 py-5 text-right">
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-[11px] font-black text-emerald-600 tracking-tighter">{stock.pe_min != null ? stock.pe_min.toFixed(2) : '-'}</span>
+                                                <span className="text-[11px] font-black text-rose-600 tracking-tighter">{stock.pe_max != null ? stock.pe_max.toFixed(2) : '-'}</span>
+                                            </div>
                                         </td>
-                                        <td className="px-4 py-3 text-right text-sm font-mono">
-                                            {stock.pe_max != null ? stock.pe_max.toFixed(2) : '-'}
-                                        </td>
-                                        <td className="px-4 py-3 text-right text-sm font-mono">
+                                        <td className="px-6 py-5 text-right font-black text-[#000000] text-sm tracking-tighter">
                                             {stock.pe_ratio != null ? stock.pe_ratio.toFixed(2) : '-'}
                                         </td>
-                                        <td className="px-4 py-3 text-right text-sm font-mono">
-                                            {stock.pe_avg != null ? stock.pe_avg.toFixed(2) : '-'}
+                                        <td className="px-6 py-5 text-right">
+                                            <span className="font-black text-[#000000] text-sm tracking-tighter">
+                                                {stock.expected_price != null ? `₹${stock.expected_price.toLocaleString()}` : '-'}
+                                            </span>
                                         </td>
-                                        <td className="px-4 py-3 text-right text-sm font-mono font-medium">
-                                            {stock.expected_price != null ? `₹${stock.expected_price.toFixed(2)}` : '-'}
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <span className={[
-                                                'inline-block px-2.5 py-1 rounded-full text-xs font-bold tracking-wide',
-                                                stock.recommendation === 'BUY' ? 'bg-emerald-100 text-emerald-700' :
-                                                    stock.recommendation === 'SELL' ? 'bg-rose-100 text-rose-700' :
-                                                        'bg-amber-100 text-amber-700',
-                                            ].join(' ')}>
+                                        <td className="px-6 py-5 text-center">
+                                            <span className={cn(
+                                                'inline-block px-3 py-1.5 rounded-lg text-[10px] font-black tracking-[0.1em] uppercase border shadow-sm',
+                                                stock.recommendation === 'BUY' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                                    stock.recommendation === 'SELL' ? 'bg-rose-50 text-rose-700 border-rose-100' :
+                                                        'bg-amber-50 text-amber-700 border-amber-100',
+                                            )}>
                                                 {stock.recommendation}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <OpportunityBadge level={stock.discount_level} />
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <span className="inline-flex items-center justify-center min-w-[48px] px-2 py-1 rounded-full bg-primary/10 text-primary text-sm font-bold">
+                                        <td className="px-6 py-5 text-center">
+                                            <div className="inline-flex items-center justify-center min-w-[54px] px-2.5 py-1.5 rounded-xl bg-blue-50 border border-blue-100 text-[#4F8DF7] text-[13px] font-black shadow-inner">
                                                 {stock.opportunity_score ?? '-'}
-                                            </span>
+                                            </div>
                                         </td>
-                                        <td className="px-4 py-3 text-center whitespace-nowrap">
+                                        <td className="px-6 py-5 text-center whitespace-nowrap">
                                             <button
                                                 onClick={() => {
                                                     if (isInCompare(stock.symbol)) {
@@ -483,16 +480,15 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                                         addToCompare({ symbol: stock.symbol, name: stock.company_name });
                                                     }
                                                 }}
-                                                title={isInCompare(stock.symbol) ? 'Remove from Compare' : 'Add to Compare'}
                                                 className={cn(
-                                                    'flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md transition-colors mx-auto',
+                                                    'flex items-center gap-2 text-[10px] font-black px-4 py-2 rounded-xl transition-all mx-auto uppercase tracking-widest border',
                                                     isInCompare(stock.symbol)
-                                                        ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
-                                                        : 'text-slate-600 hover:text-primary hover:bg-primary/10'
+                                                        ? 'text-white bg-[#4F8DF7] border-[#4F8DF7] shadow-lg shadow-[#4F8DF7]/20'
+                                                        : 'text-gray-400 border-gray-100 bg-white hover:border-[#4F8DF7] hover:text-[#4F8DF7] shadow-sm'
                                                 )}
                                             >
                                                 {isInCompare(stock.symbol)
-                                                    ? <><CheckCircle2 size={13} /> Added</>
+                                                    ? <><CheckCircle2 size={13} /> Active</>
                                                     : <><PlusCircle size={13} /> Compare</>
                                                 }
                                             </button>
@@ -506,30 +502,32 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
             </Card>
 
             {/* ── Multidimensional K-Means Clustering ──────────────────── */}
-            <Card className="border-none shadow-sm bg-white overflow-hidden">
-                <CardHeader className="bg-indigo-50/60 border-b">
-                    <div className="flex flex-wrap items-center justify-between gap-4">
+            <Card className="border border-gray-200 shadow-sm bg-white rounded-3xl overflow-hidden">
+                <CardHeader className="bg-blue-50/20 border-b border-blue-100/50 px-8 py-6">
+                    <div className="flex flex-wrap items-center justify-between gap-6">
                         <div>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Layers size={18} className="text-indigo-600" />
-                                Multidimensional K-Means Clustering
+                            <CardTitle className="text-2xl font-black text-[#000000] tracking-tight flex items-center gap-3">
+                                <div className="bg-[#4F8DF7] p-2 rounded-xl">
+                                    <Layers size={20} className="text-white" />
+                                </div>
+                                Cluster Topography
                             </CardTitle>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                All 6 feature-pair combinations — K-Means with Silhouette Score evaluation. Points labelled with ticker.
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1.5 ml-11">
+                                K-Means algorithm (K={clusterK}) evaluation via multidimensional feature-pair subspace.
                             </p>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <span className="text-sm font-medium text-muted-foreground">Clusters (K):</span>
-                            <div className="flex gap-1.5">
+                        <div className="flex items-center gap-4 bg-white p-2 rounded-2xl border border-gray-100 shadow-inner">
+                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Cluster Count (K)</span>
+                            <div className="flex gap-1">
                                 {[2, 3, 4, 5].map(k => (
                                     <button
                                         key={k}
                                         onClick={() => setClusterK(k)}
                                         className={cn(
-                                            "w-9 h-9 rounded-full text-sm font-bold border transition-colors",
+                                            "w-10 h-10 rounded-xl text-xs font-black transition-all border",
                                             clusterK === k
-                                                ? "bg-indigo-600 text-white border-indigo-600"
-                                                : "border-border text-muted-foreground hover:border-indigo-400 hover:text-indigo-600"
+                                                ? "bg-[#4F8DF7] text-white border-[#4F8DF7] shadow-md shadow-[#4F8DF7]/20"
+                                                : "bg-white border-transparent text-gray-400 hover:text-[#4F8DF7] hover:bg-blue-50"
                                         )}
                                     >
                                         {k}
@@ -539,11 +537,11 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent className="p-4 md:p-6">
-                    <div className="flex flex-col xl:flex-row gap-6">
+                <CardContent className="p-8">
+                    <div className="flex flex-col xl:flex-row gap-10">
 
                         {/* 6 scatter plot grid */}
-                        <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="min-w-0 flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {pairResults.map(({ pair, points, silhouette }) => (
                                 <PairScatterChart
                                     key={pair.id}
@@ -559,96 +557,68 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
 
                         {/* Best Cluster Representation sidebar */}
                         {bestPair && (
-                            <div className="xl:w-80 shrink-0 rounded-2xl border-2 border-indigo-300 bg-gradient-to-b from-indigo-50 to-white p-4 flex flex-col gap-4">
+                            <div className="xl:w-96 shrink-0 rounded-[2rem] border border-blue-100 bg-[#DBEAFE]/10 p-8 flex flex-col gap-8 shadow-inner">
                                 {/* Header */}
                                 <div>
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <Star size={15} className="text-amber-500 fill-amber-400" />
-                                        <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Best Cluster Representation</span>
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <div className="bg-amber-100 p-1.5 rounded-lg shadow-sm">
+                                            <Star size={15} className="text-amber-500 fill-amber-500" />
+                                        </div>
+                                        <span className="text-[10px] font-black text-[#000000] uppercase tracking-[0.2em]">Optimal Partition</span>
                                     </div>
-                                    <p className="text-sm font-semibold text-foreground">{bestPair.pair.xLabel} vs {bestPair.pair.yLabel}</p>
-                                    <p className="text-xs text-muted-foreground mt-0.5">Highest silhouette score among all 6 feature pairs</p>
-                                    <div className="flex items-end gap-2 mt-2">
-                                        <span className="text-3xl font-bold text-indigo-600">{bestPair.silhouette.toFixed(3)}</span>
-                                        <span className="text-xs text-muted-foreground mb-1">silhouette score</span>
+                                    <p className="text-2xl font-black text-[#000000] tracking-tighter leading-tight mb-2">{bestPair.pair.xLabel} vs {bestPair.pair.yLabel}</p>
+                                    <div className="flex items-end gap-3 py-4">
+                                        <span className="text-5xl font-black text-[#4F8DF7] tracking-tighter leading-none">{bestPair.silhouette.toFixed(3)}</span>
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 leading-none shadow-sm bg-white px-2 py-1 rounded-md">Silhouette Score</span>
                                     </div>
                                     <span className={cn(
-                                        "text-xs font-semibold px-2.5 py-1 rounded-full inline-block mt-1",
-                                        bestPair.silhouette > 0.5 ? "bg-emerald-100 text-emerald-700" :
-                                            bestPair.silhouette > 0.25 ? "bg-amber-100 text-amber-700" :
-                                                "bg-slate-100 text-slate-600"
+                                        "text-[10px] font-black px-3 py-1.5 rounded-lg inline-block shadow-sm border uppercase tracking-widest",
+                                        bestPair.silhouette > 0.5 ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                                            bestPair.silhouette > 0.25 ? "bg-amber-50 text-amber-700 border-amber-100" :
+                                                "bg-gray-50 text-gray-400 border-gray-100"
                                     )}>
-                                        {bestPair.silhouette > 0.5 ? "Strong separation" :
-                                            bestPair.silhouette > 0.25 ? "Moderate separation" :
-                                                "Weak separation"}
+                                        {bestPair.silhouette > 0.5 ? "Precision Grade Alpha" :
+                                            bestPair.silhouette > 0.25 ? "Operational Grade Beta" :
+                                                "Low Stability Model"}
                                     </span>
                                 </div>
 
                                 {/* Enlarged best-pair chart */}
-                                <PairScatterChart
-                                    pair={bestPair.pair}
-                                    points={bestPair.points}
-                                    clusterK={clusterK}
-                                    silhouette={bestPair.silhouette}
-                                    isBest={false}
-                                    compact={false}
-                                    hideHeader
-                                />
+                                <div className="bg-white rounded-2xl border border-white p-2 shadow-xl">
+                                    <PairScatterChart
+                                        pair={bestPair.pair}
+                                        points={bestPair.points}
+                                        clusterK={clusterK}
+                                        silhouette={bestPair.silhouette}
+                                        isBest={false}
+                                        compact={false}
+                                        hideHeader
+                                    />
+                                </div>
 
                                 {/* Cluster membership */}
                                 <div>
-                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Cluster Membership</p>
-                                    <div className="space-y-2">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Sub-Group Membership</p>
+                                    <div className="space-y-4">
                                         {Array.from({ length: clusterK }, (_, ci) => {
                                             const pts = bestPair.points.filter(p => p.cluster === ci);
                                             if (!pts.length) return null;
                                             return (
-                                                <div key={ci}>
-                                                    <div className="flex items-center gap-1.5 mb-0.5">
-                                                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: CLUSTER_COLORS[ci] }} />
-                                                        <span className="text-xs font-semibold">{CLUSTER_NAMES[ci]}</span>
-                                                        <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0">{pts.length}</Badge>
+                                                <div key={ci} className="bg-white/60 p-4 rounded-2xl border border-white/80 shadow-sm">
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                        <span className="w-3 h-3 rounded-full shrink-0 shadow-sm" style={{ background: CLUSTER_COLORS[ci] }} />
+                                                        <span className="text-[11px] font-black text-[#000000] uppercase tracking-wider">{CLUSTER_NAMES[ci]} Core</span>
+                                                        <Badge variant="secondary" className="ml-auto text-[10px] font-black bg-gray-50 text-gray-500 border border-gray-100 rounded-md py-0">{pts.length} Assets</Badge>
                                                     </div>
-                                                    <div className="flex flex-wrap gap-1 pl-4">
-                                                        {pts.slice(0, 8).map(p => (
-                                                            <span key={p.symbol} className="text-[10px] px-1 py-0.5 rounded bg-secondary/70 font-mono">{p.symbol}</span>
+                                                    <div className="flex flex-wrap gap-1.5 pl-2">
+                                                        {pts.slice(0, 10).map(p => (
+                                                            <span key={p.symbol} className="text-[10px] px-2 py-1 rounded-lg bg-white border border-gray-50 font-black text-[#4F8DF7] shadow-sm">{p.symbol}</span>
                                                         ))}
-                                                        {pts.length > 8 && <span className="text-[10px] text-muted-foreground">+{pts.length - 8}</span>}
+                                                        {pts.length > 10 && <span className="text-[9px] font-black text-gray-400 py-1 uppercase tracking-widest">+{pts.length - 10}</span>}
                                                     </div>
                                                 </div>
                                             );
                                         })}
-                                    </div>
-                                </div>
-
-                                {/* All pair silhouette rankings */}
-                                <div>
-                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">All Pair Rankings</p>
-                                    <div className="space-y-1">
-                                        {[...pairResults]
-                                            .sort((a, b) => b.silhouette - a.silhouette)
-                                            .map(({ pair, silhouette }, rank) => (
-                                                <div
-                                                    key={pair.id}
-                                                    className={cn(
-                                                        "flex items-center justify-between text-xs px-2 py-1 rounded-lg",
-                                                        pair.id === bestPair.pair.id ? "bg-indigo-100" : "hover:bg-secondary/50"
-                                                    )}
-                                                >
-                                                    <div className="flex items-center gap-1.5 min-w-0">
-                                                        <span className="text-[10px] text-muted-foreground w-3 shrink-0">{rank + 1}.</span>
-                                                        <span className="text-muted-foreground text-[10px] leading-tight truncate">
-                                                            {pair.xLabel} × {pair.yLabel}
-                                                        </span>
-                                                    </div>
-                                                    <span className={cn(
-                                                        "font-bold tabular-nums ml-2 shrink-0",
-                                                        pair.id === bestPair.pair.id ? "text-indigo-700" : "text-foreground"
-                                                    )}>
-                                                        {silhouette.toFixed(3)}
-                                                    </span>
-                                                </div>
-                                            ))}
                                     </div>
                                 </div>
                             </div>
@@ -658,23 +628,25 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
             </Card>
 
             {/* ── Correlation Matrix ───────────────────────────────────── */}
-            <Card className="border-none shadow-sm bg-white">
-                <CardHeader>
-                    <CardTitle className="text-md flex items-center gap-2">
-                        <BrainCircuit size={16} className="text-primary" />
-                        Feature Correlation Matrix
+            <Card className="border border-gray-200 shadow-sm bg-white rounded-3xl overflow-hidden mb-12">
+                <CardHeader className="bg-gray-50/50 border-b border-gray-100 px-8 py-6">
+                    <CardTitle className="text-2xl font-black text-[#000000] tracking-tight flex items-center gap-3">
+                        <div className="bg-[#4F8DF7] p-2 rounded-xl">
+                            <BrainCircuit size={20} className="text-white" />
+                        </div>
+                        Covariance Statistics
                     </CardTitle>
-                    <p className="text-xs text-muted-foreground">Heatmap of variable relationships</p>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1.5 ml-11">Real-time feature relationship & heat-dependency matrix</p>
                 </CardHeader>
-                <CardContent>
-                    <div className="overflow-x-auto w-full rounded-lg border">
+                <CardContent className="p-8">
+                    <div className="overflow-x-auto w-full rounded-2xl border border-gray-100 shadow-inner bg-gray-50/20">
                         {corrKeys.length > 0 ? (
                             <table className="w-full text-xs text-center border-collapse">
                                 <thead>
-                                    <tr>
-                                        <th className="p-2 border bg-secondary/50 text-left font-bold">Features</th>
+                                    <tr className="bg-blue-50/30">
+                                        <th className="p-4 border-b border-r border-gray-100 text-left font-black text-[#000000] uppercase tracking-widest bg-white">Feature Subspace</th>
                                         {corrKeys.map(k => (
-                                            <th key={k} className="p-2 border bg-secondary/50 font-bold whitespace-nowrap" title={k}>
+                                            <th key={k} className="p-4 border-b border-gray-100 font-black text-[#000000] uppercase tracking-tighter whitespace-nowrap bg-blue-50/10" title={k}>
                                                 {k.length > 12 ? k.substring(0, 12) + '...' : k}
                                             </th>
                                         ))}
@@ -683,7 +655,7 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                 <tbody>
                                     {corrKeys.map(rowKey => (
                                         <tr key={rowKey}>
-                                            <td className="p-2 border bg-secondary/50 text-left font-bold whitespace-nowrap" title={rowKey}>
+                                            <td className="p-4 border-r border-gray-100 text-left font-black text-gray-500 uppercase tracking-tighter whitespace-nowrap bg-white" title={rowKey}>
                                                 {rowKey.length > 14 ? rowKey.substring(0, 14) + '...' : rowKey}
                                             </td>
                                             {corrKeys.map(colKey => {
@@ -691,17 +663,19 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                                 const isPos = val > 0;
                                                 const absVal = Math.abs(val);
                                                 let bgColor = "transparent";
-                                                if (absVal > 0.1) {
-                                                    const intensity = Math.min(absVal * 0.4 + 0.05, 0.6);
+                                                let textColor = "#000000";
+                                                if (absVal > 0.05) {
+                                                    const intensity = Math.min(absVal * 0.5 + 0.1, 0.8);
                                                     bgColor = isPos
-                                                        ? `rgba(16, 185, 129, ${intensity})`
+                                                        ? `rgba(79, 141, 247, ${intensity})`
                                                         : `rgba(244, 63, 94, ${intensity})`;
+                                                    if (intensity > 0.4) textColor = "#ffffff";
                                                 }
                                                 return (
                                                     <td
                                                         key={colKey}
-                                                        className="p-2 border text-[10px] font-mono"
-                                                        style={{ backgroundColor: bgColor }}
+                                                        className="p-4 border-b border-r border-gray-100 text-[11px] font-black tabular-nums transition-colors duration-200"
+                                                        style={{ backgroundColor: bgColor, color: textColor }}
                                                         title={`${rowKey} vs ${colKey}: ${val.toFixed(4)}`}
                                                     >
                                                         {val.toFixed(2)}
@@ -713,7 +687,7 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                 </tbody>
                             </table>
                         ) : (
-                            <div className="p-8 text-center text-muted-foreground text-sm">Correlation data unavailable.</div>
+                            <div className="p-20 text-center text-gray-400 font-black uppercase tracking-[0.2em] text-sm">Covariance synchronization data unavailable.</div>
                         )}
                     </div>
                 </CardContent>

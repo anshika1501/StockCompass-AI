@@ -82,8 +82,8 @@ export default function StocksTable({ stocks, sortable = true }: StocksTableProp
     }) => (
         <th
             className={cn(
-                'px-4 py-3.5 text-xs font-bold uppercase tracking-widest sticky top-0 z-20 whitespace-nowrap bg-slate-50 border-b border-slate-200',
-                sortable && columnKey ? 'cursor-pointer group hover:bg-slate-100 transition-colors' : '',
+                'px-4 py-4 text-[11px] font-black uppercase tracking-[0.1em] sticky top-0 z-20 whitespace-nowrap bg-blue-50/80 backdrop-blur-sm border-b border-gray-200 text-[#1F2937]',
+                sortable && columnKey ? 'cursor-pointer group hover:bg-blue-100 transition-colors' : '',
                 align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left'
             )}
             onClick={() => {
@@ -106,33 +106,33 @@ export default function StocksTable({ stocks, sortable = true }: StocksTableProp
 
     if (stocks.length === 0) {
         return (
-            <Card className="border-none shadow-sm">
+            <Card className="border border-gray-200 shadow-sm rounded-xl overflow-hidden bg-white">
                 <CardContent className="pt-8 text-center">
-                    <p className="text-muted-foreground">No stocks available.</p>
+                    <p className="text-[#1F2937] font-medium">No stocks available.</p>
                 </CardContent>
             </Card>
         );
     }
 
     return (
-        <Card className="border-none shadow-sm">
-            <CardHeader className="pb-4">
+        <Card className="border border-gray-200 shadow-sm rounded-xl overflow-hidden bg-white">
+            <CardHeader className="pb-4 border-b border-gray-100 mb-0">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">Stocks</CardTitle>
+                    <CardTitle className="text-xl font-black text-[#000000]">Market Overview</CardTitle>
                     {compareList.length > 0 && (
                         <button
                             onClick={() => router.push('/compare')}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#4F8DF7] text-white text-sm font-bold hover:bg-[#2563EB] transition-all shadow-sm active:scale-95"
                         >
-                            <GitCompare size={15} />
-                            Compare ({compareList.length})
+                            <GitCompare size={16} />
+                            Compare Assets ({compareList.length})
                         </button>
                     )}
                 </div>
             </CardHeader>
             <CardContent className="p-0">
                 <div className="overflow-x-auto max-h-[700px]">
-                    <table className="w-full divide-y divide-slate-200">
+                    <table className="w-full border-collapse">
                         <thead>
                             <tr>
                                 <Th columnKey="ticker">Symbol</Th>
@@ -173,68 +173,76 @@ export default function StocksTable({ stocks, sortable = true }: StocksTableProp
                                 </th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-200">
-                            {sortedStocks.map((stock) => (
+                        <tbody className="divide-y divide-gray-100">
+                            {sortedStocks.map((stock, idx) => (
                                 <tr
                                     key={stock.ticker}
-                                    className="transition-colors hover:bg-slate-50 group cursor-pointer"
+                                    className={cn(
+                                        "transition-all duration-200 hover:bg-blue-100 group cursor-pointer",
+                                        idx % 2 === 0 ? "bg-white" : "bg-blue-50/30"
+                                    )}
                                 >
-                                    <td className="px-4 py-4 text-sm font-bold text-slate-900 whitespace-nowrap">
+                                    <td className="px-4 py-5 text-sm font-black text-[#000000] whitespace-nowrap">
                                         {stock.ticker}
                                     </td>
-                                    <td className="px-4 py-4 text-sm text-slate-700 font-medium whitespace-nowrap max-w-xs truncate">
+                                    <td className="px-4 py-5 text-sm text-[#1F2937] font-bold whitespace-nowrap max-w-xs truncate">
                                         {stock.name}
                                     </td>
-                                    <td className="px-4 py-4 text-sm text-slate-600 whitespace-nowrap">
-                                        <Badge variant="outline" className="text-xs">
+                                    <td className="px-4 py-5 text-sm text-[#1F2937] whitespace-nowrap">
+                                        <Badge variant="outline" className="text-[11px] font-bold border-gray-300 text-[#1F2937] px-2 py-0.5 rounded-md">
                                             {stock.sector}
                                         </Badge>
                                     </td>
-                                    <td className="px-4 py-4 text-right text-sm font-mono text-slate-700 whitespace-nowrap">
+                                    <td className="px-4 py-5 text-right text-sm font-bold text-[#000000] whitespace-nowrap">
                                         ₹{stock.currentPrice?.toFixed(2) ?? 'N/A'}
                                     </td>
-                                    <td className="px-4 py-4 text-right text-sm font-mono text-slate-600 whitespace-nowrap">
+                                    <td className="px-4 py-5 text-right text-[13px] font-medium text-[#1F2937] opacity-80 whitespace-nowrap">
                                         ₹{stock.fiftyTwoWeekLow?.toFixed(2) ?? 'N/A'}
                                     </td>
-                                    <td className="px-4 py-4 text-right text-sm font-mono text-slate-600 whitespace-nowrap">
+                                    <td className="px-4 py-5 text-right text-[13px] font-medium text-[#1F2937] opacity-80 whitespace-nowrap">
                                         ₹{stock.fiftyTwoWeekHigh?.toFixed(2) ?? 'N/A'}
                                     </td>
-                                    <td className="px-4 py-4 text-right text-sm font-mono text-slate-600 whitespace-nowrap">
+                                    <td className="px-4 py-5 text-right text-[13px] font-medium text-[#1F2937] whitespace-nowrap">
                                         {stock.peMin?.toFixed(2) ?? '-'}
                                     </td>
-                                    <td className="px-4 py-4 text-right text-sm font-mono text-slate-600 whitespace-nowrap">
+                                    <td className="px-4 py-5 text-right text-[13px] font-medium text-[#1F2937] whitespace-nowrap">
                                         {stock.peMax?.toFixed(2) ?? '-'}
                                     </td>
-                                    <td className="px-4 py-4 text-right text-sm font-mono text-slate-600 whitespace-nowrap">
+                                    <td className="px-4 py-5 text-right text-[13px] font-bold text-[#4F8DF7] whitespace-nowrap">
                                         {stock.peRatio?.toFixed(2) ?? '-'}
                                     </td>
-                                    <td className="px-4 py-4 text-right text-sm font-mono text-slate-600 whitespace-nowrap">
+                                    <td className="px-4 py-5 text-right text-[13px] font-medium text-[#1F2937] whitespace-nowrap">
                                         {stock.peAvg?.toFixed(2) ?? '-'}
                                     </td>
-                                    <td className="px-4 py-4 text-center whitespace-nowrap">
+                                    <td className="px-4 py-5 text-center whitespace-nowrap">
                                         <span className={cn(
-                                            'inline-block px-2.5 py-1 rounded-full text-xs font-bold tracking-wide',
-                                            stock.recommendation === 'BUY' && 'bg-emerald-100 text-emerald-700',
-                                            stock.recommendation === 'SELL' && 'bg-rose-100 text-rose-700',
-                                            stock.recommendation === 'HOLD' && 'bg-amber-100 text-amber-700',
+                                            'inline-block px-3 py-1 rounded-lg text-[11px] font-black tracking-wider uppercase border',
+                                            stock.recommendation === 'BUY' && 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                            stock.recommendation === 'SELL' && 'bg-rose-50 text-rose-700 border-rose-200',
+                                            stock.recommendation === 'HOLD' && 'bg-amber-50 text-amber-700 border-amber-200',
                                         )}>
                                             {stock.recommendation}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-4 text-right text-sm font-mono text-slate-600 whitespace-nowrap">
+                                    <td className="px-4 py-5 text-right text-sm font-bold text-[#1F2937] whitespace-nowrap">
                                         {stock.marketCap ? `₹${(stock.marketCap / 1e7).toFixed(2)} Cr` : '-'}
                                     </td>
                                     <td className={cn(
-                                        'px-4 py-4 text-center text-sm font-semibold whitespace-nowrap',
-                                        stock.change >= 0 ? 'text-emerald-600' : 'text-rose-600'
+                                        'px-4 py-5 text-center text-[13px] font-black whitespace-nowrap',
+                                        stock.change >= 0 ? 'text-emerald-700' : 'text-rose-700'
                                     )}>
-                                        {stock.change >= 0 ? '+' : ''}{stock.change.toFixed(2)} ({stock.changePercent.toFixed(2)}%)
+                                        <span className={cn(
+                                            "inline-flex items-center px-2 py-0.5 rounded",
+                                            stock.change >= 0 ? "bg-emerald-50" : "bg-rose-50"
+                                        )}>
+                                            {stock.change >= 0 ? '+' : ''}{stock.change.toFixed(2)} ({stock.changePercent.toFixed(2)}%)
+                                        </span>
                                     </td>
-                                    <td className="px-4 py-4 text-center whitespace-nowrap">
-                                        <div className="flex items-center justify-center gap-2">
+                                    <td className="px-4 py-5 text-center whitespace-nowrap">
+                                        <div className="flex items-center justify-center gap-3">
                                             <Link href={`/stock/${stock.ticker}`}>
-                                                <button className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors px-3 py-1.5 rounded-md hover:bg-primary/10">
-                                                    View
+                                                <button className="text-xs font-black text-[#4F8DF7] hover:text-[#2563EB] transition-colors px-3 py-2 rounded-lg bg-[#4F8DF7]/5 hover:bg-[#4F8DF7]/15 border border-[#4F8DF7]/20 uppercase tracking-tighter">
+                                                    Details
                                                 </button>
                                             </Link>
                                             <button
@@ -247,14 +255,14 @@ export default function StocksTable({ stocks, sortable = true }: StocksTableProp
                                                 }}
                                                 title={isInCompare(stock.ticker) ? 'Remove from Compare' : 'Add to Compare'}
                                                 className={cn(
-                                                    'flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md transition-colors',
+                                                    'flex items-center gap-1.5 text-xs font-black px-3 py-2 rounded-lg transition-all border uppercase tracking-tighter',
                                                     isInCompare(stock.ticker)
-                                                        ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
-                                                        : 'text-slate-600 hover:text-primary hover:bg-primary/10'
+                                                        ? 'text-emerald-700 bg-emerald-50 border-emerald-200 shadow-sm'
+                                                        : 'text-[#1F2937] border-gray-200 hover:border-[#4F8DF7] hover:text-[#4F8DF7] hover:bg-gray-50'
                                                 )}
                                             >
                                                 {isInCompare(stock.ticker)
-                                                    ? <><CheckCircle2 size={13} /> Added</>
+                                                    ? <><CheckCircle2 size={13} /> Active</>
                                                     : <><PlusCircle size={13} /> Compare</>
                                                 }
                                             </button>

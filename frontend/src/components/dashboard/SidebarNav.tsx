@@ -22,7 +22,7 @@ const mainItems: SidebarItem[] = [
 ];
 
 const marketItems: SidebarItem[] = [
-  { label: "Portfolios", href: "/portfolios", icon: BriefcaseBusiness },
+  { label: "Sectors", href: "/portfolios", icon: BriefcaseBusiness },
   { label: "Nifty 50", href: "/stocks", icon: LineChart },
   { label: "Bitcoin, Gold & Silver", href: "/gold-silver", icon: Bitcoin },
   { label: "Compare Assets", href: "/compare", icon: Scale },

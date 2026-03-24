@@ -58,20 +58,20 @@ export default function StockChartWithRanges({ ticker, initialHistory, color }: 
     }, [ticker, initialHistory]);
 
     return (
-        <Card className="border-none shadow-sm bg-white mb-8">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg font-bold">Performance ({RANGE_TITLES[activeRange] || activeRange})</CardTitle>
-                <div className="flex gap-2">
+        <Card className="border border-gray-200 shadow-sm bg-white mb-10 rounded-2xl overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between px-8 py-6 border-b border-gray-50">
+                <CardTitle className="text-xl font-black text-[#000000] tracking-tight">Performance History</CardTitle>
+                <div className="flex gap-2 bg-gray-50 p-1.5 rounded-xl border border-gray-100 shadow-inner">
                     {RANGES.map((range) => (
                         <button
                             key={range.period}
                             onClick={() => fetchChart(range.period)}
                             disabled={loading}
                             className={cn(
-                                "text-[10px] font-bold px-2 py-1 rounded transition-colors",
+                                "text-[11px] font-black px-4 py-2 rounded-lg transition-all uppercase tracking-tighter",
                                 activeRange === range.period
-                                    ? "bg-primary text-white"
-                                    : "bg-secondary text-muted-foreground hover:bg-primary/10"
+                                    ? "bg-[#4F8DF7] text-white shadow-md shadow-[#4F8DF7]/20 scale-105"
+                                    : "text-gray-500 hover:text-[#4F8DF7] hover:bg-white"
                             )}
                         >
                             {range.label}
@@ -79,16 +79,18 @@ export default function StockChartWithRanges({ ticker, initialHistory, color }: 
                     ))}
                 </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-8 pb-8 pt-6">
                 {loading ? (
-                    <div className="h-[300px] flex items-center justify-center">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <div className="h-[350px] flex items-center justify-center">
+                        <Loader2 className="h-10 w-10 animate-spin text-[#4F8DF7]" />
                     </div>
                 ) : history.length > 0 ? (
-                    <StockChart history={history} color={color} />
+                    <div className="h-[350px]">
+                        <StockChart history={history} color={color} />
+                    </div>
                 ) : (
-                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                        No chart data available for this period.
+                    <div className="h-[350px] flex items-center justify-center text-gray-400 font-bold uppercase tracking-widest text-xs">
+                        Chart history unavailable
                     </div>
                 )}
             </CardContent>
