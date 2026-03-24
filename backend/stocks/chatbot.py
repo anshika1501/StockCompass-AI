@@ -11,7 +11,8 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_OLLAMA_BASE = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 DEFAULT_CHAT_MODEL = os.environ.get("OLLAMA_CHAT_MODEL", "tinyllama")
-DEFAULT_EMBED_MODEL = os.environ.get("OLLAMA_EMBED_MODEL", "qwen3-embedding:0.6b")
+# Allow embeddings to be optional; empty env disables embedding lookups
+DEFAULT_EMBED_MODEL = (os.environ.get("OLLAMA_EMBED_MODEL") or "").strip() or None
 
 
 class OllamaClient:
@@ -60,7 +61,7 @@ class OllamaClient:
         payload = {
             "model": model,
             "messages": [
-                {"role": "system", "content": "You are StockCompass AI."},
+                {"role": "system", "content": "You are Anshi, the StockCompass AI."},
                 {"role": "user", "content": full_prompt},
             ],
             "stream": False,
@@ -126,6 +127,18 @@ class ChatAdvisorService:
 
         embed_model_use = embed_model or DEFAULT_EMBED_MODEL
         chat_model_use = chat_model or DEFAULT_CHAT_MODEL
+
+        # When no embed model is configured, fall back to a model-only answer without retrieval.
+        if not embed_model_use:
+            context = "Embeddings are disabled. Answer using general market knowledge only; avoid ticker-specific claims unless explicitly requested."
+            prompt = (
+                "You are StockCompass AI. Embeddings are disabled, so you do not have stock vectors. "
+                "Provide a concise, risk-aware answer to the user's question using general market reasoning. "
+                "Avoid fabricating ticker-specific metrics; if the user asked about specific tickers, remind them "
+                "that detailed context is unavailable until embeddings are enabled. Limit to 150 words and include a brief disclaimer."
+            )
+            answer_text = self.ollama.generate(prompt, context, question, model=chat_model_use)
+            return {"answer": answer_text, "sources": []}
 
         query_vec = self.ollama.embed_text(question.strip(), model=embed_model_use)
         matches = list(self._nearest_stocks(query_vec, top_k=6))

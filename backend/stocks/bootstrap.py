@@ -60,6 +60,10 @@ def bootstrap_stock_data(
     if not embed:
         return
 
+    if not DEFAULT_EMBED_MODEL:
+        logger.info("Bootstrapping embeddings skipped: no OLLAMA_EMBED_MODEL configured.")
+        return
+
     logger.info("Bootstrapping stocks: building embeddings")
     client = OllamaClient()
 
