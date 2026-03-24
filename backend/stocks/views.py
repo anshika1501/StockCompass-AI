@@ -1940,9 +1940,9 @@ def stock_predictions(request):
                 arima_pred = current_price
                 
             # LSTM (Simple TF model)
-            import tensorflow as tf
             from sklearn.preprocessing import MinMaxScaler
             try:
+                import tensorflow as tf
                 scaler = MinMaxScaler()
                 scaled_prices = scaler.fit_transform(prices.reshape(-1, 1))
                 X, y = [], []
@@ -1971,6 +1971,7 @@ def stock_predictions(request):
                 
             # CNN (Simple TF model)
             try:
+                import tensorflow as tf
                 cnn_model = tf.keras.Sequential([
                     tf.keras.layers.Conv1D(filters=16, kernel_size=2, activation='relu', input_shape=(seq_len, 1)),
                     tf.keras.layers.MaxPooling1D(pool_size=2),
