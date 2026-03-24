@@ -55,4 +55,13 @@ urlpatterns = [
     # Auth
     path('login/', views.login_user, name='login-user'),
     path('register/', views.register_user, name='register-user'),
+    path('profile/', views.UpdateProfileView.as_view(), name='profile-update'),
+
+    # Portfolio Management
+    path('portfolio/create/', views.CreatePortfolioView.as_view(), name='create-portfolio'),
+    path('portfolio/', views.GetPortfoliosView.as_view(), name='get-portfolios'),
+    path('portfolio/<int:id>/delete/', views.DeletePortfolioView.as_view(), name='delete-portfolio'),
+    path('portfolio/<int:id>/rename/', views.RenamePortfolioView.as_view(), name='rename-portfolio'),
+    path('holding/add/', views.AddHoldingView.as_view(), name='add-holding'),
+    path('holding/delete/<int:id>/', views.DeleteHoldingView.as_view(), name='delete-holding'),
 ]

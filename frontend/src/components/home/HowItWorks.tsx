@@ -5,78 +5,77 @@ import { UserPlus, Briefcase, Sparkles, CheckCircle2 } from "lucide-react";
 
 const steps = [
   {
-    icon: <UserPlus className="w-6 h-6 text-indigo-400" />,
-    title: "Create Account",
-    desc: "Sign up in seconds and connect your brokerage securely with bank-grade encryption."
+    icon: UserPlus,
+    title: "Onboard in minutes",
+    desc: "Create your account and align the app to how you actually trade—no jargon-heavy setup wizards.",
+    accent: "text-indigo-400",
   },
   {
-    icon: <Briefcase className="w-6 h-6 text-blue-400" />,
-    title: "Build Portfolio",
-    desc: "Import existing assets or build from scratch using our curated industry templates."
+    icon: Briefcase,
+    title: "Model your book",
+    desc: "Import holdings or build sleeves manually. Templates mirror how Indian investors segment large caps, mid caps, and themes.",
+    accent: "text-sky-400",
   },
   {
-    icon: <Sparkles className="w-6 h-6 text-purple-400" />,
-    title: "Get AI Insights",
-    desc: "Our engine scans technicals and sentiment to generate actionable daily recommendations."
+    icon: Sparkles,
+    title: "Let AI interpret",
+    desc: "Technical structure, flows, and news sentiment compress into clear stances you can accept, edit, or ignore.",
+    accent: "text-violet-400",
   },
   {
-    icon: <CheckCircle2 className="w-6 h-6 text-emerald-400" />,
-    title: "Execute Smart",
-    desc: "Place optimized trades based on probabilistic models and predictive price actions."
-  }
+    icon: CheckCircle2,
+    title: "Act with context",
+    desc: "Alerts and dashboards stay synchronized so execution matches the story you signed off on—not yesterday’s chart.",
+    accent: "text-emerald-400",
+  },
 ];
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-24 bg-[#0F1423]">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <motion.h2 
-            initial={{ opacity: 0, y: 20 }}
+    <section id="how-it-works" className="scroll-mt-24 border-y border-white/[0.06] bg-[#0a0e18] py-20 lg:py-28">
+      <div className="mx-auto max-w-7xl px-5 lg:px-8">
+        <div className="mx-auto mb-14 max-w-2xl text-center lg:mb-20">
+          <p className="section-label mb-3">Workflow</p>
+          <motion.h2
+            initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-3xl lg:text-5xl font-bold text-white mb-4"
+            className="font-display text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-[2.75rem]"
           >
-            From Start to Scale
+            From first login to a calm routine
           </motion.h2>
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="text-slate-400 max-w-xl mx-auto text-lg"
+            transition={{ delay: 0.06 }}
+            className="mt-4 text-base text-slate-400 sm:text-lg"
           >
-            A frictionless flow designed to get you from onboarding to optimized investing in minutes.
+            We obsess over reducing noise. Each step exists so the next one feels obvious.
           </motion.p>
         </div>
 
-        <div className="relative mt-20">
-          {/* Connector Line */}
-          <div className="hidden lg:block absolute top-12 left-0 w-full h-0.5 bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-emerald-500/20" />
-          
-          <div className="grid lg:grid-cols-4 gap-12 lg:gap-8">
+        <div className="relative mt-8 lg:mt-12">
+          <div className="pointer-events-none absolute left-0 top-[4.5rem] hidden h-px w-full bg-gradient-to-r from-indigo-500/25 via-violet-500/20 to-emerald-500/25 lg:block" />
+
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
             {steps.map((step, idx) => (
               <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 30 }}
+                key={step.title}
+                initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: idx * 0.15 }}
-                className="relative flex flex-col items-center text-center group"
+                transition={{ duration: 0.45, delay: idx * 0.08 }}
+                className="relative flex flex-col items-center text-center"
               >
-                {/* Number indicator */}
-                <div className="w-24 h-24 rounded-2xl bg-[#121827] border border-white/10 flex items-center justify-center mb-8 relative z-10 group-hover:-translate-y-2 transition-transform duration-300 group-hover:shadow-[0_0_30px_rgba(99,102,241,0.2)]">
-                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent rounded-2xl" />
-                  {step.icon}
-                  
-                  {/* Step badge */}
-                  <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-sm font-bold border-4 border-[#0F1423] shadow-lg">
+                <div className="relative z-10 mb-6 flex h-[5.5rem] w-[5.5rem] items-center justify-center rounded-2xl border border-white/[0.08] bg-[#0c101c] shadow-lg shadow-black/20 transition-transform duration-300 hover:-translate-y-1">
+                  <step.icon className={`h-7 w-7 ${step.accent}`} strokeWidth={1.75} />
+                  <span className="absolute -right-1 -top-1 flex h-8 w-8 items-center justify-center rounded-full border-4 border-[#0a0e18] bg-indigo-600 text-xs font-bold text-white">
                     {idx + 1}
-                  </div>
+                  </span>
                 </div>
-
-                <h3 className="text-xl font-bold text-white mb-3">{step.title}</h3>
-                <p className="text-slate-400 leading-relaxed text-sm max-w-[250px]">{step.desc}</p>
+                <h3 className="font-display text-lg font-semibold text-white">{step.title}</h3>
+                <p className="mt-2 max-w-[260px] text-sm leading-relaxed text-slate-400">{step.desc}</p>
               </motion.div>
             ))}
           </div>

@@ -1,6 +1,37 @@
 from django.db import models
 from django.utils import timezone
 from pgvector.django import VectorField
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+class Portfolio(models.Model):
+    """User-specific portfolio to group stock holdings."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='portfolios')
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.name}"
+
+class Holding(models.Model):
+    """A stock holding within a user's portfolio."""
+    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name='holdings')
+    ticker = models.CharField(max_length=20)
+    company_name = models.CharField(max_length=255)
+    quantity = models.IntegerField(default=1)
+    buy_price = models.FloatField()
+    buy_time = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-buy_time']
+
+    def __str__(self):
+        return f"{self.quantity} shares of {self.ticker} in {self.portfolio.name}"
 
 
 class StockCategory(models.Model):

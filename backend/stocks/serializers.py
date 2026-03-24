@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import StockCategory, Stock, StockPrice, StockPrediction
+from .models import StockCategory, Stock, StockPrice, StockPrediction, Portfolio, Holding
 
 
 class StockCategorySerializer(serializers.ModelSerializer):
@@ -80,3 +80,27 @@ class StockPredictionSerializer(serializers.ModelSerializer):
             'lstm_prediction', 'cnn_prediction', 'actual_price', 
             'arima_error', 'lstm_error', 'cnn_error', 'created_at'
         ]
+
+class HoldingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Holding
+        fields = ['id', 'portfolio', 'ticker', 'company_name', 'quantity', 'buy_price', 'buy_time']
+        read_only_fields = ['id', 'buy_time', 'portfolio']
+        
+    def validate_quantity(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Quantity must be greater than 0.")
+        return value
+        
+    def validate_buy_price(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Buy price must be greater than 0.")
+        return value
+
+class PortfolioSerializer(serializers.ModelSerializer):
+    holdings = HoldingSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = Portfolio
+        fields = ['id', 'user', 'name', 'description', 'created_at', 'holdings']
+        read_only_fields = ['id', 'user', 'created_at']

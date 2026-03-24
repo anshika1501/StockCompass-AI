@@ -39,18 +39,18 @@ export default function SectorCard({ sector }: { sector: Sector }) {
               <Icon className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h3 className="font-black text-xl tracking-tight">{sector.name}</h3>
-              <p className="text-[10px] font-black uppercase tracking-[0.15em] text-[#4F8DF7] bg-blue-50/10 px-2 py-0.5 rounded-md border border-white/10 backdrop-blur-sm">Sector Intelligence</p>
+              <h3 className="text-xl font-bold tracking-tight">{sector.name}</h3>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#93c5fd] bg-white/10 px-2 py-0.5 rounded-md border border-white/15 backdrop-blur-sm">Research & coverage</p>
             </div>
           </div>
         </div>
         <CardContent className="p-6">
-          <p className="text-sm font-medium text-[#1F2937] line-clamp-2 mb-6 h-10 leading-relaxed opacity-80 italic">
+          <p className="text-sm font-normal text-slate-700 line-clamp-2 mb-6 h-10 leading-relaxed">
             {sector.description}
           </p>
           <div className="flex items-center justify-between">
-            <div className="flex items-center text-[#4F8DF7] text-[13px] font-black group-hover:gap-2 transition-all uppercase tracking-widest">
-              Explore Sector <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
+            <div className="flex items-center text-[#4F8DF7] text-[13px] font-semibold group-hover:gap-2 transition-all tracking-wide">
+              View sector <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" aria-hidden />
             </div>
             <div className="h-2 w-2 rounded-full bg-gray-200 group-hover:bg-[#4F8DF7] transition-colors" />
           </div>

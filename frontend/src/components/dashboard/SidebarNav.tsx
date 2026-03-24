@@ -13,12 +13,14 @@ import {
   MessageCircle,
   Bot,
   BarChart3,
+  Wallet,
 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { SidebarMenuItem, type SidebarItem } from "./SidebarMenuItem";
 
 const mainItems: SidebarItem[] = [
   { label: "Dashboard", href: "/portfolios", icon: LayoutDashboard },
+  { label: "My Portfolio", href: "/my-portfolio", icon: Wallet },
 ];
 
 const marketItems: SidebarItem[] = [
