@@ -1,105 +1,236 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, X, Send, Sparkles } from "lucide-react";
+import { MessageSquare, X, Send, Loader2, Sparkles, HelpCircle } from "lucide-react";
+import { getHelpResponse } from "@/lib/help-assistant";
+import { HELP_INTRO_MESSAGE, HELP_SUGGESTED_PROMPTS } from "@/lib/system-help-knowledge";
+import { HelpMessageContent } from "@/components/help/HelpMessageContent";
+
+type Msg = { role: "user" | "bot"; content: string };
 
 export default function ChatbotButton() {
   const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [messages, setMessages] = useState<Msg[]>([{ role: "bot", content: HELP_INTRO_MESSAGE }]);
+  const endRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      endRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isOpen, loading]);
+
+  const send = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const q = query.trim();
+    if (!q || loading) return;
+    setQuery("");
+    setMessages((m) => [...m, { role: "user", content: q }]);
+    setLoading(true);
+    try {
+      await new Promise((r) => setTimeout(r, 150));
+      setMessages((m) => [...m, { role: "bot", content: getHelpResponse(q) }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const applySuggestion = (text: string) => {
+    setQuery(text);
+    requestAnimationFrame(() => {
+      const input = document.getElementById("landing-help-input");
+      input?.focus();
+    });
+  };
 
   return (
     <>
-      <div className="fixed bottom-8 right-8 z-[100]">
-        <motion.button
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setIsOpen(!isOpen)}
-          className="relative group w-14 h-14 rounded-full bg-gradient-to-r from-indigo-600 to-blue-500 text-white flex items-center justify-center shadow-[0_0_30px_rgba(99,102,241,0.5)] border border-white/20 transition-all duration-300 z-50 overflow-hidden"
-        >
-          {/* Animated Glow outline */}
-          <div className="absolute inset-0 bg-white/20 rounded-full blur animate-ping opacity-30 pointer-events-none" />
-          
-          <div className="relative z-10">
-            {isOpen ? <X className="w-6 h-6" /> : <MessageSquare className="w-6 h-6" />}
-          </div>
-        </motion.button>
-      </div>
+      {/* Launcher — only when panel closed */}
+      <AnimatePresence>
+        {!isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.85 }}
+            transition={{ duration: 0.2 }}
+            className="fixed bottom-6 right-6 z-[100] md:bottom-8 md:right-8"
+          >
+            <motion.button
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              type="button"
+              onClick={() => setIsOpen(true)}
+              className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-slate-200/80 bg-white text-[#4F8DF7] shadow-[0_10px_40px_rgba(79,141,247,0.35)] ring-1 ring-slate-900/5 transition-colors hover:bg-slate-50"
+              aria-expanded={false}
+              aria-label="Open StockCompass help"
+            >
+              <MessageSquare className="h-6 w-6" />
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9, transformOrigin: "bottom right" }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="fixed bottom-28 right-8 z-[100] w-[350px] lg:w-[400px] h-[550px] bg-[#0F1423]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden isolate"
-          >
-            {/* Header */}
-            <div className="relative p-5 border-b border-white/10 bg-[#121827]/80 flex items-center gap-4">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-[40px] pointer-events-none" />
-              <div className="w-10 h-10 rounded-full bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center relative p-[1px]">
-                  <div className="absolute top-0 right-0 w-3 h-3 bg-emerald-400 rounded-full border-2 border-[#121827]" />
-                  <Sparkles className="w-5 h-5 text-indigo-400" />
-              </div>
-              <div>
-                <h3 className="text-white font-medium text-lg leading-tight">StockCompass AI</h3>
-                <p className="text-emerald-400 text-xs font-medium border border-emerald-400/20 bg-emerald-400/10 inline-block px-1.5 py-0.5 rounded mt-1">Online</p>
-              </div>
-            </div>
+          <>
+            <motion.button
+              type="button"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              aria-label="Close help overlay"
+              className="fixed inset-0 z-[90] bg-slate-950/40 backdrop-blur-[2px]"
+              onClick={() => setIsOpen(false)}
+            />
 
-            {/* Chat Body */}
-            <div className="flex-1 overflow-y-auto p-5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-               <div className="space-y-4">
-                  {/* Assistant Msg */}
-                  <div className="flex gap-3 max-w-[85%]">
-                     <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex-shrink-0 flex items-center justify-center border border-indigo-400/20">
-                        <Sparkles className="w-4 h-4 text-indigo-400" />
-                     </div>
-                     <div className="bg-[#1e263c] border border-white/10 p-3 rounded-2xl rounded-tl-sm text-sm text-slate-300 leading-relaxed shadow-sm">
-                        Hello! I'm your AI quantitative assistant. How can I help you optimize your portfolio today?
-                     </div>
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="StockCompass help"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", stiffness: 380, damping: 36 }}
+              className="fixed inset-x-0 bottom-0 z-[100] flex max-h-[min(85vh,820px)] flex-col border-t border-slate-200/90 bg-white shadow-[0_-20px_60px_rgba(15,23,42,0.12)]"
+            >
+              {/* Top bar — full width, aligned */}
+              <div className="shrink-0 border-b border-slate-100 bg-gradient-to-b from-slate-50 to-white px-4 py-4 sm:px-6 lg:px-8">
+                <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
+                  <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-100 bg-blue-50 text-[#4F8DF7] shadow-sm">
+                      <HelpCircle className="h-6 w-6" strokeWidth={2} />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-display text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
+                        StockCompass Help
+                      </h3>
+                      <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-medium text-emerald-800">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          Product guide
+                        </span>
+                        <span className="hidden text-slate-400 sm:inline">·</span>
+                        <span className="hidden sm:inline">How to use the platform</span>
+                      </p>
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsOpen(false)}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+                    aria-label="Close help"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
 
-                  {/* User Msg */}
-                  <div className="flex gap-3 max-w-[85%] ml-auto justify-end">
-                     <div className="bg-indigo-600 border border-indigo-500/50 p-3 rounded-2xl rounded-tr-sm text-sm text-white leading-relaxed shadow-sm">
-                        What's the current sentiment on TSLA options?
-                     </div>
-                  </div>
-
-                  {/* Assistant Msg with rich content */}
-                  <div className="flex gap-3 max-w-[90%]">
-                     <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex-shrink-0 flex items-center justify-center border border-indigo-400/20">
-                        <Sparkles className="w-4 h-4 text-indigo-400" />
-                     </div>
-                     <div className="bg-[#1e263c] border border-white/10 p-3 rounded-2xl rounded-tl-sm text-sm text-slate-300 leading-relaxed shadow-sm">
-                        Based on real-time NLP scans of 4,200 articles over the last 24 hours:
-                        <div className="mt-3 p-3 bg-[#0F1423] border border-white/5 rounded-xl text-xs space-y-2">
-                            <div className="flex justify-between items-center text-slate-400"><span className="text-rose-400">Put/Call Ratio</span> <span>1.2 (Bearish)</span></div>
-                            <div className="flex justify-between items-center text-slate-400"><span className="text-emerald-400">Implied Vol</span> <span>54% (Elevated)</span></div>
-                            <div className="flex justify-between items-center text-slate-400 font-medium"><span className="text-indigo-400">AI Signal</span> <span>Hold</span></div>
+              {/* Messages — white inner canvas */}
+              <div
+                ref={scrollRef}
+                className="min-h-0 flex-1 overflow-y-auto bg-white px-4 py-5 sm:px-6 lg:px-8"
+              >
+                <div className="mx-auto max-w-4xl space-y-5">
+                  {messages.map((msg, i) => (
+                    <div
+                      key={i}
+                      className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
+                    >
+                      {msg.role === "bot" && (
+                        <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-blue-100 bg-blue-50">
+                          <Sparkles className="h-4 w-4 text-[#4F8DF7]" />
                         </div>
-                     </div>
-                  </div>
-               </div>
-            </div>
-
-            {/* Input Footer */}
-            <div className="p-4 border-t border-white/10 bg-[#121827]/80">
-              <div className="relative flex items-center">
-                 <input 
-                   type="text" 
-                   placeholder="Ask me anything..." 
-                   className="w-full bg-[#0F1423] border border-white/10 text-white text-sm rounded-full py-3.5 pl-5 pr-12 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all font-inter"
-                 />
-                 <button className="absolute right-2 p-2 bg-indigo-600 rounded-full text-white hover:bg-indigo-500 transition-colors shadow-lg">
-                    <Send className="w-4 h-4 ml-[2px]" />
-                 </button>
+                      )}
+                      <div
+                        className={
+                          msg.role === "user"
+                            ? "max-w-[min(100%,28rem)] rounded-2xl rounded-tr-md border border-[#4F8DF7]/30 bg-[#4F8DF7] px-4 py-3 text-sm leading-relaxed text-white shadow-sm"
+                            : "max-w-[min(100%,36rem)] rounded-2xl rounded-tl-md border border-slate-200 bg-slate-50/90 px-4 py-3 text-sm shadow-sm"
+                        }
+                      >
+                        {msg.role === "user" ? (
+                          <span className="whitespace-pre-wrap">{msg.content}</span>
+                        ) : (
+                          <HelpMessageContent content={msg.content} variant="light" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {loading && (
+                    <div className="flex gap-3">
+                      <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-blue-100 bg-blue-50">
+                        <Sparkles className="h-4 w-4 text-[#4F8DF7]" />
+                      </div>
+                      <div className="flex items-center gap-2 rounded-2xl rounded-tl-md border border-slate-200 bg-slate-50 px-5 py-3">
+                        <Loader2 className="h-4 w-4 animate-spin text-[#4F8DF7]" />
+                        <span className="text-sm text-slate-500">Finding an answer…</span>
+                      </div>
+                    </div>
+                  )}
+                  <div ref={endRef} />
+                </div>
               </div>
-            </div>
-          </motion.div>
+
+              {/* Common questions — full width strip, all prompts */}
+              <div className="shrink-0 border-t border-slate-100 bg-slate-50/90 px-4 py-4 sm:px-6 lg:px-8">
+                <div className="mx-auto max-w-6xl">
+                  <p className="mb-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 sm:text-left">
+                    Common questions
+                  </p>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    {HELP_SUGGESTED_PROMPTS.map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => applySuggestion(p)}
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-left text-xs font-medium leading-snug text-slate-800 shadow-sm transition hover:border-[#4F8DF7]/40 hover:bg-blue-50/50 hover:text-[#4F8DF7] sm:text-sm"
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Input footer — full width */}
+              <div className="shrink-0 border-t border-slate-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
+                <form onSubmit={send} className="mx-auto max-w-6xl">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-3">
+                    <div className="relative flex-1">
+                      <input
+                        id="landing-help-input"
+                        type="text"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Ask how to use StockCompass…"
+                        className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 pr-14 text-sm text-slate-900 shadow-inner outline-none transition placeholder:text-slate-400 focus:border-[#4F8DF7] focus:ring-2 focus:ring-[#4F8DF7]/20"
+                        disabled={loading}
+                        autoComplete="off"
+                      />
+                      <button
+                        type="submit"
+                        disabled={loading || !query.trim()}
+                        className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg bg-[#4F8DF7] text-white shadow-md transition hover:bg-blue-600 disabled:opacity-35"
+                        aria-label="Send"
+                      >
+                        {loading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-center text-[11px] text-slate-400 sm:text-left">
+                    Answers are from product documentation. Not live market or investment advice.
+                  </p>
+                </form>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </>

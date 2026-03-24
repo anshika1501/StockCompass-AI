@@ -1,16 +1,15 @@
 "use client";
 
-"use client";
-
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Loader2, Bot, User } from "lucide-react";
+import { MessageCircle, X, Send, Loader2, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { chatWithStocks, ChatResponse } from "@/lib/stock-data";
+import { getHelpResponse } from "@/lib/help-assistant";
+import { HELP_INTRO_MESSAGE, HELP_SUGGESTED_PROMPTS } from "@/lib/system-help-knowledge";
+import { HelpMessageContent } from "@/components/help/HelpMessageContent";
 
 type Message = {
   role: "user" | "bot";
   content: string;
-  sources?: any[];
 };
 
 export default function ChatFab() {
@@ -18,10 +17,7 @@ export default function ChatFab() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "bot",
-      content: "Hi! I'm StockCompass AI. Ask me about stock risks, predictions, or comparisons (e.g. 'Compare RELIANCE.NS and TCS.NS')."
-    }
+    { role: "bot", content: HELP_INTRO_MESSAGE },
   ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -45,10 +41,9 @@ export default function ChatFab() {
     setLoading(true);
 
     try {
-      const res = await chatWithStocks(userMsg);
-      setMessages((prev) => [...prev, { role: "bot", content: res.answer, sources: res.sources }]);
-    } catch (error: any) {
-      setMessages((prev) => [...prev, { role: "bot", content: "Sorry, I encountered an error: " + (error.message || "Unknown error") }]);
+      await new Promise((r) => setTimeout(r, 180));
+      const answer = getHelpResponse(userMsg);
+      setMessages((prev) => [...prev, { role: "bot", content: answer }]);
     } finally {
       setLoading(false);
     }
@@ -63,97 +58,88 @@ export default function ChatFab() {
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
-      {/* Chat Window */}
-      <div 
-        className={`mb-4 overflow-hidden bg-white border border-gray-200 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-2xl transition-all duration-300 origin-bottom-right flex flex-col ${
-          open ? "scale-100 opacity-100" : "scale-50 opacity-0 pointer-events-none"
+      <div
+        className={`mb-4 flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-all duration-300 origin-bottom-right ${
+          open ? "pointer-events-auto scale-100 opacity-100" : "pointer-events-none scale-50 opacity-0"
         }`}
         style={{ width: "min(420px, calc(100vw - 48px))", height: "min(700px, calc(100vh - 120px))" }}
       >
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-[#4F8DF7] text-white shrink-0 z-10">
+        <div className="z-10 flex shrink-0 items-center justify-between border-b border-gray-100 bg-[#4F8DF7] px-6 py-5 text-white">
           <div className="flex items-center gap-4">
-            <div className="h-11 w-11 shrink-0 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-inner">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white/20 shadow-inner backdrop-blur-md">
               <Bot className="h-6 w-6 text-white" />
             </div>
             <div>
-              <p className="text-sm font-black tracking-tight">AI Financial Analyst</p>
-              <p className="text-[11px] text-white/80 font-bold flex items-center gap-1.5 uppercase tracking-wider">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse border border-white/20"></span>
-                Active System
+              <p className="text-sm font-bold tracking-tight">StockCompass Help</p>
+              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-white/80">
+                <span className="h-2 w-2 animate-pulse rounded-full border border-white/20 bg-emerald-400" />
+                Product guide
               </p>
             </div>
           </div>
-          <button 
+          <button
+            type="button"
             onClick={() => setOpen(false)}
-            className="p-2 shrink-0 rounded-lg text-white hover:bg-white/20 transition-all flex items-center justify-center active:scale-95"
+            className="flex shrink-0 items-center justify-center rounded-lg p-2 text-white transition-all hover:bg-white/20 active:scale-95"
+            aria-label="Close"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Message Area */}
-        <div className="flex-1 overflow-y-auto bg-white p-6 space-y-6">
+        <div className="flex-1 space-y-6 overflow-y-auto bg-white p-6">
           {messages.map((msg, idx) => (
-            <div key={idx} className={`flex gap-4 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div key={idx} className={cn("flex gap-4", msg.role === "user" ? "justify-end" : "justify-start")}>
               {msg.role === "bot" && (
-                <div className="h-9 w-9 shrink-0 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center mt-1 shadow-sm">
+                <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-blue-100 bg-blue-50 shadow-sm">
                   <Bot className="h-5 w-5 text-[#4F8DF7]" />
                 </div>
               )}
-              <div className={cn(
-                "max-w-[85%] rounded-2xl px-5 py-3.5 text-sm font-medium shadow-sm border transition-all",
-                msg.role === "user" 
-                  ? "bg-[#4F8DF7] text-white border-[#4F8DF7] rounded-tr-none shadow-[#4F8DF7]/20" 
-                  : "bg-white border-gray-100 text-[#000000] rounded-tl-none"
-              )}>
-                <div className="whitespace-pre-wrap leading-relaxed tracking-tight">
-                  {msg.content}
-                </div>
-                {msg.sources && msg.sources.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-gray-100 space-y-2.5">
-                    <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Data Insights:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {msg.sources.map((s, sIdx) => (
-                        <div key={sIdx} className="bg-blue-50/50 hover:bg-blue-50 rounded-lg px-2.5 py-1.5 text-[12px] border border-blue-100 transition-colors">
-                          <span className="font-black text-[#4F8DF7]">{s.symbol}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+              <div
+                className={cn(
+                  "max-w-[85%] rounded-2xl border px-5 py-3.5 text-sm font-medium shadow-sm transition-all",
+                  msg.role === "user"
+                    ? "rounded-tr-none border-[#4F8DF7] bg-[#4F8DF7] text-white shadow-[#4F8DF7]/20"
+                    : "rounded-tl-none border-gray-100 bg-white text-[#000000]"
+                )}
+              >
+                {msg.role === "user" ? (
+                  <div className="whitespace-pre-wrap leading-relaxed tracking-tight">{msg.content}</div>
+                ) : (
+                  <HelpMessageContent content={msg.content} variant="light" />
                 )}
               </div>
             </div>
           ))}
           {loading && (
-            <div className="flex gap-4 justify-start">
-              <div className="h-9 w-9 shrink-0 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center mt-1 shadow-sm">
+            <div className="flex justify-start gap-4">
+              <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-blue-100 bg-blue-50 shadow-sm">
                 <Bot className="h-5 w-5 text-[#4F8DF7]" />
               </div>
-              <div className="max-w-[80%] bg-white border border-gray-100 rounded-2xl rounded-tl-none px-6 py-5 shadow-sm flex items-center gap-2">
-                <div className="w-2.5 h-2.5 bg-[#4F8DF7]/30 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                <div className="w-2.5 h-2.5 bg-[#4F8DF7]/60 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                <div className="w-2.5 h-2.5 bg-[#4F8DF7] rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+              <div className="flex max-w-[80%] items-center gap-2 rounded-2xl rounded-tl-none border border-gray-100 bg-white px-6 py-5 shadow-sm">
+                <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-[#4F8DF7]/30" style={{ animationDelay: "0ms" }} />
+                <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-[#4F8DF7]/60" style={{ animationDelay: "150ms" }} />
+                <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-[#4F8DF7]" style={{ animationDelay: "300ms" }} />
               </div>
             </div>
           )}
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Suggestions / Pill Buttons */}
-        <div className="px-6 py-2 bg-white flex flex-wrap gap-2 shrink-0">
-          {["Compare TCS & RELIANCE", "Portfolio Risk", "Market Trends"].map((text) => (
-             <button 
-                key={text}
-                onClick={() => { setQuery(text); }}
-                className="px-3 py-1.5 rounded-full bg-blue-50 text-[#4F8DF7] text-[11px] font-bold border border-blue-100 hover:bg-blue-100 transition-all active:scale-95"
-             >
-                {text}
-             </button>
+        <div className="flex shrink-0 flex-wrap gap-2 bg-white px-6 py-2">
+          {HELP_SUGGESTED_PROMPTS.map((text) => (
+            <button
+              key={text}
+              type="button"
+              onClick={() => setQuery(text)}
+              className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-[11px] font-bold text-[#4F8DF7] transition-all hover:bg-blue-100 active:scale-95"
+            >
+              {text}
+            </button>
           ))}
         </div>
 
-        {/* Input Area */}
-        <div className="p-6 bg-white border-t border-gray-100 shrink-0">
+        <div className="shrink-0 border-t border-gray-100 bg-white p-6">
           <form onSubmit={handleSend} className="relative flex items-center gap-3">
             <div className="relative flex-1">
               <textarea
@@ -166,32 +152,47 @@ export default function ChatFab() {
                   e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
                 }}
                 onKeyDown={handleKeyDown}
-                placeholder="Message AI Financial Analyst..."
-                className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50/50 px-5 py-4 pr-14 text-sm font-medium text-[#000000] focus:border-[#4F8DF7] focus:bg-white focus:ring-4 focus:ring-[#4F8DF7]/10 outline-none transition-all disabled:opacity-50 min-h-[56px] shadow-inner"
+                placeholder="Ask how to use StockCompass…"
+                className="min-h-[56px] w-full resize-none rounded-xl border border-gray-200 bg-gray-50/50 px-5 py-4 pr-14 text-sm font-medium text-[#000000] shadow-inner outline-none transition-all focus:border-[#4F8DF7] focus:bg-white focus:ring-4 focus:ring-[#4F8DF7]/10 disabled:opacity-50"
                 disabled={loading}
               />
               <button
                 type="submit"
                 disabled={!query.trim() || loading}
-                className="absolute right-3 top-1/2 -translate-y-1/2 h-10 w-10 rounded-lg bg-[#4F8DF7] text-white shadow-lg active:scale-90 flex items-center justify-center disabled:opacity-20 disabled:grayscale transition-all"
+                className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg bg-[#4F8DF7] text-white shadow-lg transition-all active:scale-90 disabled:grayscale disabled:opacity-20"
+                aria-label="Send"
               >
                 {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
               </button>
             </div>
           </form>
-          <p className="text-center mt-4 text-[11px] font-bold text-gray-400 tracking-tight uppercase">AI insights may vary. Verify with professionals.</p>
+          <p className="mt-4 text-center text-[11px] font-bold uppercase tracking-tight text-gray-400">
+            Help answers are from product docs, not live market data. For stock Q&amp;A use Chatbot (AI Tools).
+          </p>
         </div>
       </div>
 
-      {/* FAB Button */}
       <button
-        className="flex items-center justify-center h-16 w-16 rounded-2xl shadow-[0_10px_30px_rgba(79,141,247,0.4)] bg-[#4F8DF7] text-white hover:bg-[#2563EB] hover:scale-105 active:scale-95 transition-all duration-300 focus:outline-none ring-offset-2 ring-[#4F8DF7]/20"
+        type="button"
+        className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-[#4F8DF7] text-white shadow-[0_10px_30px_rgba(79,141,247,0.4)] ring-offset-2 ring-[#4F8DF7]/20 transition-all duration-300 hover:scale-105 hover:bg-[#2563EB] focus:outline-none active:scale-95"
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-label={open ? "Close help" : "Open help"}
       >
-        <div className={`transition-all duration-300 absolute ${open ? "rotate-90 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100"}`}>
+        <div
+          className={cn(
+            "absolute transition-all duration-300",
+            open ? "rotate-90 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100"
+          )}
+        >
           <MessageCircle className="h-7 w-7" />
         </div>
-        <div className={`transition-all duration-300 absolute ${open ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-0 opacity-0"}`}>
+        <div
+          className={cn(
+            "absolute transition-all duration-300",
+            open ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-0 opacity-0"
+          )}
+        >
           <X className="h-7 w-7" />
         </div>
       </button>
