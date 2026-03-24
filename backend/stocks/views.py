@@ -3,7 +3,10 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.db.models import Q
 from django.core.cache import cache
-from .models import StockCategory, Stock
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from .models import StockCategory, Stock, Portfolio, Holding
+from .serializers import PortfolioSerializer, HoldingSerializer
 from .services import StockDataService
 from .chatbot import ChatAdvisorService, OllamaClient, DEFAULT_CHAT_MODEL, DEFAULT_EMBED_MODEL, DEFAULT_OLLAMA_BASE
 from .analytics import (
@@ -2008,6 +2011,113 @@ def stock_predictions(request):
             logger.error(f"Prediction error: {e}")
             return Response({'error': str(e)}, status=500)
 
+
+from rest_framework.views import APIView
+from rest_framework import status
+from django.contrib.auth import get_user_model
+from .models import Portfolio, Holding
+from .serializers import PortfolioSerializer, HoldingSerializer
+
+def get_user_from_request(request):
+    """Parse mock token from header: Bearer session_<user_id>_valid"""
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer session_"):
+        try:
+            user_id = auth_header.split("_")[1]
+            User = get_user_model()
+            return User.objects.filter(id=user_id).first()
+        except:
+            return None
+    return None
+
+class CreatePortfolioView(APIView):
+    def post(self, request):
+        user = get_user_from_request(request)
+        if not user:
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+            
+        serializer = PortfolioSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GetPortfoliosView(APIView):
+    def get(self, request):
+        user = get_user_from_request(request)
+        if not user:
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+            
+        portfolios = Portfolio.objects.filter(user=user)
+        serializer = PortfolioSerializer(portfolios, many=True)
+        return Response(serializer.data)
+
+
+class AddHoldingView(APIView):
+    def post(self, request):
+        user = get_user_from_request(request)
+        if not user:
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+            
+        portfolio_id = request.data.get('portfolio_id')
+        portfolio = Portfolio.objects.filter(id=portfolio_id, user=user).first()
+        if not portfolio:
+            return Response({"error": "Portfolio not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = HoldingSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(portfolio=portfolio)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DeleteHoldingView(APIView):
+    def post(self, request, id):
+        user = get_user_from_request(request)
+        if not user:
+            return Response({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+            
+        holding = Holding.objects.filter(id=id, portfolio__user=user).first()
+        if not holding:
+            return Response({"error": "Holding not found or access denied"}, status=status.HTTP_404_NOT_FOUND)
+            
+        holding.delete()
+        return Response({"message": "Successfully deleted"}, status=status.HTTP_200_OK)
+
+
+class DeletePortfolioView(APIView):
+    def delete(self, request, id):
+        user = get_user_from_request(request)
+        if not user:
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+
+        portfolio = Portfolio.objects.filter(id=id, user=user).first()
+        if not portfolio:
+            return Response({"error": "Portfolio not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        portfolio.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class RenamePortfolioView(APIView):
+    def patch(self, request, id):
+        user = get_user_from_request(request)
+        if not user:
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+
+        portfolio = Portfolio.objects.filter(id=id, user=user).first()
+        if not portfolio:
+            return Response({"error": "Portfolio not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        new_name = request.data.get("name", "").strip()
+        if not new_name:
+            return Response({"error": "Name is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        portfolio.name = new_name
+        portfolio.save()
+        serializer = PortfolioSerializer(portfolio)
+        return Response(serializer.data)
 
 @api_view(['POST'])
 def evaluate_predictions(request):
