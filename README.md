@@ -1,3 +1,11 @@
+# 📈 Update Stock Prices
+
+To update stock prices for the past month, run the following command in the backend directory:
+
+```bash
+python manage.py init_stocks --update-prices --period 1mo
+```
+
 # StockCompass
 [![LOC](https://badge.aiyu.co.in/repo-batch?owner=anshika1501&repo=StockCompass-AI&fields=loc)](https://github.com/anshika1501/StockCompass-AI)
 
