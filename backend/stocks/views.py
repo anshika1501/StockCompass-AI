@@ -2030,6 +2030,50 @@ def get_user_from_request(request):
             return None
     return None
 
+
+class UpdateProfileView(APIView):
+    """PATCH /api/profile/ — update display name and/or email (username) for the session user."""
+
+    def patch(self, request):
+        user = get_user_from_request(request)
+        if not user:
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+
+        User = get_user_model()
+        name = request.data.get("name")
+        new_email = request.data.get("email")
+
+        if name is not None:
+            user.first_name = (name or "").strip()[:150]
+
+        if new_email is not None:
+            new_email = (new_email or "").strip().lower()
+            if not new_email:
+                return Response({"error": "Email cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
+            if new_email != user.email:
+                if User.objects.filter(username=new_email).exclude(pk=user.pk).exists():
+                    return Response(
+                        {"error": "That email is already in use."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                user.username = new_email
+                user.email = new_email
+
+        user.save()
+        display_name = user.first_name or (
+            user.email.split("@")[0] if user.email else "User"
+        )
+        return Response(
+            {
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "name": display_name,
+                }
+            }
+        )
+
+
 class CreatePortfolioView(APIView):
     def post(self, request):
         user = get_user_from_request(request)
@@ -2110,11 +2154,19 @@ class RenamePortfolioView(APIView):
         if not portfolio:
             return Response({"error": "Portfolio not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        new_name = request.data.get("name", "").strip()
-        if not new_name:
-            return Response({"error": "Name is required"}, status=status.HTTP_400_BAD_REQUEST)
+        updated = False
+        if "name" in request.data:
+            new_name = (request.data.get("name") or "").strip()
+            if not new_name:
+                return Response({"error": "Name is required"}, status=status.HTTP_400_BAD_REQUEST)
+            portfolio.name = new_name
+            updated = True
+        if "description" in request.data:
+            portfolio.description = (request.data.get("description") or "").strip()
+            updated = True
+        if not updated:
+            return Response({"error": "No updates provided"}, status=status.HTTP_400_BAD_REQUEST)
 
-        portfolio.name = new_name
         portfolio.save()
         serializer = PortfolioSerializer(portfolio)
         return Response(serializer.data)

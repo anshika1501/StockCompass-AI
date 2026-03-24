@@ -1,111 +1,120 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { 
-  BrainCircuit, 
-  LineChart, 
-  ActivitySquare, 
-  ShieldAlert, 
-  Newspaper, 
-  Send 
+import {
+  BrainCircuit,
+  LineChart,
+  ActivitySquare,
+  ShieldAlert,
+  Newspaper,
+  Send,
 } from "lucide-react";
 
 const features = [
   {
-    title: "AI Portfolio Insights",
-    description: "Deep learning models analyze your holdings to uncover hidden correlations and optimize returns.",
-    icon: <BrainCircuit className="w-6 h-6 text-indigo-400" />,
-    color: "from-indigo-500/20 to-blue-500/20",
-    borderHover: "group-hover:border-indigo-500/50"
+    title: "AI portfolio insights",
+    description:
+      "Surface drivers behind your holdings—correlations, concentration, and scenario context—in language you can act on.",
+    icon: BrainCircuit,
+    accent: "text-indigo-400",
+    tint: "from-indigo-500/15 to-blue-500/10",
+    borderHover: "hover:border-indigo-500/35",
   },
   {
-    title: "Smart Buy/Sell Signals",
-    description: "Get predictive entry and exit points powered by historical data and real-time market sentiment.",
-    icon: <LineChart className="w-6 h-6 text-emerald-400" />,
-    color: "from-emerald-500/20 to-teal-500/20",
-    borderHover: "group-hover:border-emerald-500/50"
+    title: "Signal layer",
+    description:
+      "Structured buy/sell discipline from price action, liquidity, and sentiment—not a single noisy headline.",
+    icon: LineChart,
+    accent: "text-emerald-400",
+    tint: "from-emerald-500/15 to-teal-500/10",
+    borderHover: "hover:border-emerald-500/35",
   },
   {
-    title: "Real-Time Tracking",
-    description: "Sub-second latency updates on global equities, ensuring you never miss a market movement.",
-    icon: <ActivitySquare className="w-6 h-6 text-blue-400" />,
-    color: "from-blue-500/20 to-cyan-500/20",
-    borderHover: "group-hover:border-blue-500/50"
+    title: "Live market sync",
+    description:
+      "Quotes and marks that keep pace with the session so your dashboard matches the tape you care about.",
+    icon: ActivitySquare,
+    accent: "text-sky-400",
+    tint: "from-sky-500/15 to-cyan-500/10",
+    borderHover: "hover:border-sky-500/35",
   },
   {
-    title: "Risk Analysis Engine",
-    description: "Advanced stress-testing for your portfolio against macro-economic shocks and volatility.",
-    icon: <ShieldAlert className="w-6 h-6 text-rose-400" />,
-    color: "from-rose-500/20 to-orange-500/20",
-    borderHover: "group-hover:border-rose-500/50"
+    title: "Risk & stress views",
+    description:
+      "Stress-style lenses on volatility and drawdowns so you know when to size up—or step aside.",
+    icon: ShieldAlert,
+    accent: "text-rose-400",
+    tint: "from-rose-500/15 to-orange-500/10",
+    borderHover: "hover:border-rose-500/35",
   },
   {
-    title: "Sentiment Analysis",
-    description: "NLP algorithms scan thousands of news articles and social feeds to gauge market mood instantly.",
-    icon: <Newspaper className="w-6 h-6 text-purple-400" />,
-    color: "from-purple-500/20 to-pink-500/20",
-    borderHover: "group-hover:border-purple-500/50"
+    title: "Sentiment intelligence",
+    description:
+      "NLP across news and social streams, scored and summarized so you see regime shifts early.",
+    icon: Newspaper,
+    accent: "text-violet-400",
+    tint: "from-violet-500/15 to-fuchsia-500/10",
+    borderHover: "hover:border-violet-500/35",
   },
   {
-    title: "Telegram Alerts",
-    description: "Receive critical actionable alerts directly to your devices via intelligent push notifications.",
-    icon: <Send className="w-6 h-6 text-sky-400" />,
-    color: "from-sky-500/20 to-cyan-500/20",
-    borderHover: "group-hover:border-sky-500/50"
-  }
+    title: "Alerts that ship",
+    description:
+      "Telegram and in-app nudges for the events that matter—levels, risk flags, and portfolio drift.",
+    icon: Send,
+    accent: "text-cyan-400",
+    tint: "from-cyan-500/15 to-blue-500/10",
+    borderHover: "hover:border-cyan-500/35",
+  },
 ];
 
 export default function Features() {
   return (
-    <section id="features" className="py-24 relative z-10">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <motion.h2 
-            initial={{ opacity: 0, y: 20 }}
+    <section id="features" className="relative z-10 scroll-mt-24 py-20 lg:py-28">
+      <div className="mx-auto max-w-7xl px-5 lg:px-8">
+        <div className="mx-auto mb-14 max-w-2xl text-center lg:mb-20">
+          <p className="section-label mb-3">Platform</p>
+          <motion.h2
+            initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-3xl lg:text-5xl font-bold text-white mb-6"
+            transition={{ duration: 0.5 }}
+            className="font-display text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-[2.75rem]"
           >
-            Intelligence over intuition
+            Everything in one disciplined stack
           </motion.h2>
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-slate-400 text-lg max-w-2xl mx-auto"
+            transition={{ duration: 0.5, delay: 0.06 }}
+            className="mt-4 text-base leading-relaxed text-slate-400 sm:text-lg"
           >
-            A full suite of institutional-grade tools built to give retail investors the ultimate edge in active markets.
+            The same primitives institutional desks use—research, risk, and execution context—presented for
+            individuals who treat investing as a process.
           </motion.p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
           {features.map((feature, idx) => (
-            <motion.div
-              key={idx}
+            <motion.article
+              key={feature.title}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: idx * 0.1 }}
-              whileHover={{ y: -5, scale: 1.02 }}
-              className={`group relative bg-[#0F1423]/50 backdrop-blur-sm border border-white/5 rounded-2xl p-8 transition-all duration-300 ${feature.borderHover} hover:shadow-[0_0_30px_rgba(99,102,241,0.1)]`}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.45, delay: Math.min(idx * 0.06, 0.36) }}
+              whileHover={{ y: -3 }}
+              className={`group relative rounded-2xl border border-white/[0.06] bg-[#0c101c]/60 p-7 backdrop-blur-sm transition-colors duration-300 ${feature.borderHover}`}
             >
-              {/* Glow overlay */}
-              <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-10 transition-opacity duration-500 rounded-2xl pointer-events-none" />
-              
-              <div className={`w-14 h-14 rounded-xl mb-6 flex items-center justify-center bg-gradient-to-br ${feature.color} border border-white/10 group-hover:scale-110 transition-transform duration-300`}>
-                {feature.icon}
+              <div
+                className={`mb-5 flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.08] bg-gradient-to-br ${feature.tint}`}
+              >
+                <feature.icon className={`h-6 w-6 ${feature.accent}`} strokeWidth={1.75} />
               </div>
-              
-              <h3 className="text-xl font-semibold text-white mb-3 tracking-tight">
+              <h3 className="font-display text-lg font-semibold tracking-tight text-white">
                 {feature.title}
               </h3>
-              
-              <p className="text-slate-400 leading-relaxed text-sm">
-                {feature.description}
-              </p>
-            </motion.div>
+              <p className="mt-2 text-sm leading-relaxed text-slate-400">{feature.description}</p>
+            </motion.article>
           ))}
         </div>
       </div>

@@ -1,12 +1,16 @@
 import { Suspense } from "react";
-import { LoginClient } from "./LoginClient";
+import { AuthScreen } from "@/components/auth/AuthScreen";
 
 export default function LoginPage() {
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-muted/30 relative overflow-hidden">
-            <Suspense fallback={<div className="text-center">Loading...</div>}>
-                <LoginClient />
-            </Suspense>
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#070a12] text-slate-400">
+          Loading…
         </div>
-    );
+      }
+    >
+      <AuthScreen />
+    </Suspense>
+  );
 }

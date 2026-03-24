@@ -6,45 +6,49 @@ import Link from "next/link";
 
 export default function CTA() {
   return (
-    <section className="py-32 relative overflow-hidden bg-[#0F1423] z-10">
-      {/* Glow Effects */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-[800px] max-h-[800px] bg-indigo-600/10 rounded-full blur-[150px] pointer-events-none" />
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30" />
+    <section id="cta" className="relative z-10 overflow-hidden bg-[#0c101c] py-24 lg:py-32">
+      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[min(90vw,720px)] w-[min(90vw,720px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-600/[0.08] blur-[120px]" />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.35] [mask-image:radial-gradient(ellipse_55%_45%_at_50%_50%,#000_45%,transparent)] bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[length:4rem_4rem]"
+        aria-hidden
+      />
 
-      <div className="max-w-4xl mx-auto px-6 text-center relative z-20">
-        <motion.h2 
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
+      <div className="relative z-20 mx-auto max-w-3xl px-5 text-center lg:px-8">
+        <p className="section-label mb-4 text-slate-400">Pricing</p>
+        <motion.h2
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-4xl lg:text-6xl font-black text-white mb-8 leading-tight tracking-tight font-inter"
+          transition={{ duration: 0.5 }}
+          className="font-display text-3xl font-bold leading-tight tracking-tight text-white sm:text-4xl lg:text-5xl"
         >
-          Start building your intelligent portfolio today
+          Bring discipline to how you size risk
         </motion.h2>
+        <motion.p
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.08 }}
+          className="mx-auto mt-5 max-w-xl text-base text-slate-400 sm:text-lg"
+        >
+          Start with a full-featured trial. Upgrade when the workflow earns a permanent seat on your desk.
+        </motion.p>
 
         <motion.div
-           initial={{ opacity: 0, y: 20 }}
-           whileInView={{ opacity: 1, y: 0 }}
-           viewport={{ once: true }}
-           transition={{ duration: 0.6, delay: 0.2 }}
-           className="flex flex-col sm:flex-row items-center justify-center gap-6"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6"
         >
-          <div className="relative group w-full sm:w-auto">
-            {/* Button Glow shadow */}
-            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-600 to-blue-600 rounded-full blur opacity-50 group-hover:opacity-100 transition duration-500 group-hover:duration-200" />
-            
-            <Link 
-              href="/register"
-              className="relative flex items-center justify-center w-full px-10 py-5 bg-black text-white rounded-full leading-none font-bold text-lg overflow-hidden transition-transform duration-300 hover:scale-[1.02]"
-            >
-               <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-indigo-600 to-blue-600 opacity-90 transition-opacity duration-300 pointer-events-none group-hover:opacity-100" />
-               <span className="relative flex items-center gap-3">
-                 Get Started
-                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-               </span>
-            </Link>
-          </div>
-          <span className="text-slate-500 font-medium">Free 14-day trial. No credit card required.</span>
+          <Link
+            href="/register"
+            className="group inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-blue-600 px-9 py-4 text-base font-semibold text-white shadow-lg shadow-indigo-600/25 transition hover:shadow-indigo-500/40"
+          >
+            Get started
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+          <p className="text-sm text-slate-500">14-day trial · No card required</p>
         </motion.div>
       </div>
     </section>

@@ -62,3 +62,25 @@
     @apply bg-background text-foreground font-body;
   }
 }
+
+/* Landing page: premium surfaces & glass */
+@layer components {
+  .landing-page {
+    --landing-bg: #070a12;
+    --landing-surface: #0c101c;
+    --landing-elevated: #111827;
+    --landing-border: rgba(255, 255, 255, 0.06);
+    --landing-accent: #6366f1;
+    --landing-accent-soft: rgba(99, 102, 241, 0.12);
+  }
+
+  .glass-panel {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+      0 24px 48px -12px rgba(0, 0, 0, 0.45);
+  }
+
+  .section-label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500;
+  }
+}

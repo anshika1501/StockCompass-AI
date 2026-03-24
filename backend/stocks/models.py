@@ -9,6 +9,7 @@ class Portfolio(models.Model):
     """User-specific portfolio to group stock holdings."""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='portfolios')
     name = models.CharField(max_length=100)
+    description = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

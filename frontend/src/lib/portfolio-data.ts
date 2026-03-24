@@ -14,6 +14,7 @@ export interface Portfolio {
   id: number;
   user: number;
   name: string;
+  description?: string;
   created_at: string;
   holdings: Holding[];
 }
@@ -49,11 +50,11 @@ export async function getPortfolios(): Promise<Portfolio[]> {
   return handleResponse<Portfolio[]>(res);
 }
 
-export async function createPortfolio(name: string): Promise<Portfolio> {
+export async function createPortfolio(name: string, description = ""): Promise<Portfolio> {
   const res = await fetch(`${API_BASE}/portfolio/create/`, {
     method: "POST",
     headers: getAuthHeaders(),
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, description: description.trim() }),
   });
   return handleResponse<Portfolio>(res);
 }
@@ -103,13 +104,21 @@ export async function deletePortfolio(id: number): Promise<void> {
   }
 }
 
-export async function renamePortfolio(id: number, name: string): Promise<Portfolio> {
+export async function updatePortfolio(
+  id: number,
+  payload: { name?: string; description?: string }
+): Promise<Portfolio> {
   const res = await fetch(`${API_BASE}/portfolio/${id}/rename/`, {
     method: "PATCH",
     headers: getAuthHeaders(),
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(payload),
   });
   return handleResponse<Portfolio>(res);
+}
+
+/** @deprecated use updatePortfolio */
+export async function renamePortfolio(id: number, name: string): Promise<Portfolio> {
+  return updatePortfolio(id, { name });
 }
 
 export interface LiveSearchStock {

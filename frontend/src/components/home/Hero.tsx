@@ -1,175 +1,190 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, BarChart3, TrendingUp, DollarSign } from "lucide-react";
+import { ArrowRight, BarChart3, TrendingUp, IndianRupee } from "lucide-react";
 import Link from "next/link";
 
 export default function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center pt-32 pb-20 overflow-hidden">
-      {/* Background Effects */}
-      <div className="absolute inset-0 z-0">
-        <div className="absolute top-0 right-0 -m-32 w-[600px] h-[600px] bg-indigo-600/20 rounded-full blur-[120px] mix-blend-screen animate-pulse" />
-        <div className="absolute bottom-0 left-0 -m-32 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[100px] mix-blend-screen animate-pulse duration-1000" />
-        <div 
-          className="absolute inset-0 z-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay"
+    <section className="relative flex min-h-[100svh] items-center overflow-hidden pb-16 pt-28 md:pt-32 lg:pb-24 lg:pt-36">
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <div className="absolute -right-40 top-0 h-[min(100vw,520px)] w-[min(100vw,520px)] rounded-full bg-indigo-600/15 blur-[100px]" />
+        <div className="absolute -left-32 bottom-0 h-[min(90vw,420px)] w-[min(90vw,420px)] rounded-full bg-blue-600/10 blur-[90px]" />
+        <div
+          className="absolute inset-0 opacity-[0.035] mix-blend-overlay [background-image:url('https://grainy-gradients.vercel.app/noise.svg')]"
+          aria-hidden
         />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10 w-full grid lg:grid-cols-2 gap-16 items-center">
-        {/* Left Side Content */}
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-14 px-5 lg:grid-cols-2 lg:gap-16 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 28 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="flex flex-col items-start text-left"
+          transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+          className="flex flex-col text-left"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-sm font-medium mb-6 backdrop-blur-sm">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+          <div className="mb-6 inline-flex w-fit items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3.5 py-1.5 backdrop-blur-sm">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60 opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
             </span>
-            StockCompass AI is now live 1.0
+            <span className="text-xs font-medium text-slate-400">
+              Portfolio intelligence · INR-first workflows
+            </span>
           </div>
-          
-          <h1 className="text-5xl lg:text-7xl font-bold tracking-tight text-white leading-[1.1] mb-6 font-inter">
-             Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-blue-500">AI-Powered</span><br />
-             Stock Intelligence<br />
-             Platform
+
+          <h1 className="font-display text-[2.5rem] font-bold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-[3.5rem] xl:text-6xl">
+            Clarity for every{" "}
+            <span className="bg-gradient-to-r from-indigo-300 via-white to-blue-300 bg-clip-text text-transparent">
+              position you hold
+            </span>
           </h1>
-          
-          <p className="text-lg text-slate-400 mb-10 max-w-xl leading-relaxed">
-            Track, analyze, and grow your portfolio with real-time insights, predictive models, and intelligent automation built for the modern investor.
+
+          <p className="mt-6 max-w-xl text-base leading-relaxed text-slate-400 sm:text-lg">
+            One workspace for Indian portfolios: live quotes, AI context, sentiment, and risk
+            signals—so decisions feel considered, not improvised.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-            <Link 
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <Link
               href="/register"
-              className="group flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-indigo-600 to-blue-500 text-white font-medium rounded-full shadow-lg shadow-indigo-600/30 hover:scale-105 transition-all duration-300"
+              className="group inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-blue-600 px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition hover:shadow-indigo-500/35"
             >
-              Get Started
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              Start free
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
-            <Link 
+            <Link
               href="#demo"
-              className="flex items-center justify-center gap-3 px-8 py-4 bg-white/5 hover:bg-white/10 text-white font-medium border border-white/10 rounded-full transition-all duration-300 backdrop-blur-sm"
+              className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/[0.03] px-7 py-3.5 text-sm font-medium text-white backdrop-blur-sm transition hover:border-white/20 hover:bg-white/[0.06]"
             >
-              View Demo
+              See the console
             </Link>
           </div>
+
+          <p className="mt-6 text-xs text-slate-600">
+            Educational tooling only—not investment advice. Markets involve risk.
+          </p>
         </motion.div>
 
-        {/* Right Side Dashboard Preview Preview */}
         <motion.div
-          initial={{ opacity: 0, x: 50 }}
+          initial={{ opacity: 0, x: 40 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 1, delay: 0.2, ease: "easeOut" }}
-          className="relative hidden lg:block perspective-[1000px]"
+          transition={{ duration: 0.75, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+          className="relative hidden perspective-[1200px] lg:block"
         >
-          <motion.div 
-            animate={{ y: [0, -10, 0] }}
-            transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-            className="w-full h-full relative z-20"
+          <motion.div
+            animate={{ y: [0, -8, 0] }}
+            transition={{ repeat: Infinity, duration: 7, ease: "easeInOut" }}
+            className="relative z-20"
           >
-            <div className="glass-panel border border-white/10 bg-[#0F1423]/80 backdrop-blur-2xl rounded-2xl p-6 shadow-2xl flex flex-col gap-6 rotate-y-[-5deg] rotate-x-[5deg] transform-gpu">
-              {/* Header Mock */}
-              <div className="flex items-center justify-between border-b border-white/5 pb-4">
+            <div className="glass-panel flex rotate-y-[-6deg] rotate-x-[4deg] transform-gpu flex-col gap-6 rounded-2xl border border-white/10 bg-[#0c101c]/90 p-6 shadow-2xl backdrop-blur-2xl">
+              <div className="flex items-start justify-between border-b border-white/[0.06] pb-4">
                 <div>
-                  <h3 className="text-white font-semibold">Total Portfolio Value</h3>
-                  <div className="text-3xl font-bold text-white mt-1 flex items-baseline gap-2">
-                    $124,560.89 
-                    <span className="text-emerald-400 text-sm font-medium flex items-center">
-                      <TrendingUp className="w-3 h-3 mr-1" /> +12.4%
+                  <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+                    Total portfolio (INR)
+                  </p>
+                  <div className="mt-1 flex flex-wrap items-baseline gap-2">
+                    <span className="font-display text-3xl font-bold tabular-nums tracking-tight text-white">
+                      ₹1,03,45,092
+                    </span>
+                    <span className="inline-flex items-center rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold tabular-nums text-emerald-400">
+                      <TrendingUp className="mr-0.5 h-3 w-3" /> +12.4%
                     </span>
                   </div>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-indigo-400" />
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-indigo-500/10">
+                  <BarChart3 className="h-5 w-5 text-indigo-400" strokeWidth={2} />
                 </div>
               </div>
 
-              {/* Chart Mock */}
-              <div className="h-48 w-full bg-gradient-to-t from-indigo-500/10 to-transparent rounded-xl relative overflow-hidden flex items-end border border-white/5">
-                <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full absolute inset-0">
-                  <motion.path 
+              <div className="relative h-48 w-full overflow-hidden rounded-xl border border-white/[0.06] bg-gradient-to-t from-indigo-500/[0.08] to-transparent">
+                <svg
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  className="absolute inset-0 h-full w-full"
+                  aria-hidden
+                >
+                  <motion.path
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: 1 }}
-                    transition={{ duration: 2, ease: "easeInOut", delay: 0.5 }}
+                    transition={{ duration: 1.8, ease: "easeInOut", delay: 0.35 }}
                     d="M0,80 C10,70 20,90 30,60 C40,30 50,60 60,40 C70,20 80,40 100,10"
-                    fill="none" 
-                    stroke="url(#gradient)" 
-                    strokeWidth="3"
+                    fill="none"
+                    stroke="url(#heroGradient)"
+                    strokeWidth="2.5"
+                    vectorEffect="non-scaling-stroke"
                   />
                   <defs>
-                    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#818cf8" />
-                      <stop offset="100%" stopColor="#3b82f6" />
+                    <linearGradient id="heroGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#a5b4fc" />
+                      <stop offset="100%" stopColor="#60a5fa" />
                     </linearGradient>
                   </defs>
                 </svg>
-                {/* Simulated Chart Bars */}
-                <div className="w-full flex justify-between items-end px-4 h-full py-4 opacity-50 absolute inset-0 z-[-1]">
-                  {[40, 60, 30, 80, 50, 90, 70, 100].map((v, i) => (
-                    <motion.div 
+                <div className="pointer-events-none absolute inset-0 flex items-end justify-between px-3 pb-3 opacity-40">
+                  {[38, 58, 32, 72, 48, 88, 62, 95].map((v, i) => (
+                    <motion.div
                       key={i}
                       initial={{ height: 0 }}
                       animate={{ height: `${v}%` }}
-                      transition={{ duration: 1, delay: 0.5 + (i*0.1) }}
-                      className="w-[8%] bg-indigo-500/10 rounded-t-sm"
+                      transition={{ duration: 0.9, delay: 0.35 + i * 0.06 }}
+                      className="w-[7%] rounded-t-sm bg-indigo-500/15"
                     />
                   ))}
                 </div>
               </div>
 
-              {/* Stats Mock */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                  <div className="text-slate-400 text-sm mb-1">AI Recommendation</div>
-                  <div className="text-emerald-400 font-semibold flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse border border-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]" /> 
-                    STRONG BUY
-                  </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <p className="text-xs text-slate-500">AI stance</p>
+                  <p className="mt-1 flex items-center gap-2 text-sm font-semibold text-emerald-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
+                    Overweight quality
+                  </p>
                 </div>
-                <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                  <div className="text-slate-400 text-sm mb-1">Risk Score</div>
-                  <div className="text-amber-400 font-semibold">Low (2.4/10)</div>
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <p className="text-xs text-slate-500">Risk score</p>
+                  <p className="mt-1 text-sm font-semibold tabular-nums text-amber-300/90">
+                    Moderate · 3.1 / 10
+                  </p>
                 </div>
               </div>
             </div>
           </motion.div>
 
-          {/* Floating Element 1 */}
-          <motion.div 
-            animate={{ y: [-15, 15, -15], rotate: [0, 5, 0] }}
-            transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
-            className="absolute -top-10 -right-10 bg-[#0F1423] border border-white/10 p-4 rounded-xl shadow-2xl backdrop-blur-xl z-30"
+          <motion.div
+            animate={{ y: [-12, 12, -12] }}
+            transition={{ repeat: Infinity, duration: 5.5, ease: "easeInOut" }}
+            className="absolute -right-4 -top-8 z-30 rounded-xl border border-white/10 bg-[#0c101c]/95 p-4 shadow-xl backdrop-blur-xl"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-rose-400" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-500/15">
+                <IndianRupee className="h-4 w-4 text-rose-300" strokeWidth={2} />
               </div>
               <div>
-                <div className="text-xs text-slate-400">TSLA Sell Target</div>
-                <div className="text-sm font-bold text-white">$250.00</div>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                  Alert · INFY
+                </p>
+                <p className="text-sm font-semibold tabular-nums text-white">₹1,482 target zone</p>
               </div>
             </div>
           </motion.div>
 
-          {/* Floating Element 2 */}
-           <motion.div 
-            animate={{ y: [15, -15, 15], rotate: [0, -5, 0] }}
-            transition={{ repeat: Infinity, duration: 6, ease: "easeInOut", delay: 1 }}
-            className="absolute -bottom-8 -left-8 bg-[#0F1423] border border-white/10 p-4 rounded-xl shadow-2xl backdrop-blur-xl z-30"
+          <motion.div
+            animate={{ y: [12, -12, 12] }}
+            transition={{ repeat: Infinity, duration: 6.5, ease: "easeInOut", delay: 0.8 }}
+            className="absolute -bottom-6 -left-4 z-30 rounded-xl border border-white/10 bg-[#0c101c]/95 p-4 shadow-xl backdrop-blur-xl"
           >
             <div className="flex items-center gap-3">
-               <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                 <svg className="w-5 h-5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="3 15 12 7 21 15"></polygon></svg>
-               </div>
-               <div>
-                 <div className="text-xs text-slate-400">NVDA Breakout</div>
-                 <div className="text-sm font-bold text-emerald-400">+1.2M Vol</div>
-               </div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/15">
+                <TrendingUp className="h-4 w-4 text-emerald-400" strokeWidth={2} />
+              </div>
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                  Momentum
+                </p>
+                <p className="text-sm font-semibold text-emerald-400">Strong bid flow</p>
+              </div>
             </div>
           </motion.div>
         </motion.div>

@@ -3,14 +3,41 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Plus, Trash2, TrendingUp, AlertCircle, BriefcaseBusiness,
-  Search, LogIn, Pencil, Check, X, Loader2, Sparkles
+  Plus,
+  Trash2,
+  BriefcaseBusiness,
+  Search,
+  LogIn,
+  Pencil,
+  Check,
+  X,
+  Loader2,
+  Sparkles,
 } from "lucide-react";
 import {
-  getPortfolios, createPortfolio, addHolding, deleteHolding,
-  deletePortfolio, renamePortfolio, getToken, Portfolio,
-  searchLiveStocks, LiveSearchStock
+  getPortfolios,
+  createPortfolio,
+  addHolding,
+  deleteHolding,
+  deletePortfolio,
+  updatePortfolio,
+  getToken,
+  Portfolio,
+  searchLiveStocks,
+  LiveSearchStock,
 } from "@/lib/portfolio-data";
+
+const PORTFOLIO_SUGGESTIONS = [
+  "NIFTY 50",
+  "Bank Nifty",
+  "IT Index",
+  "Top Dividend Yielders",
+];
+
+/** Inputs aligned with dashboard light pane (portfolios / sector pages) */
+function inputClass() {
+  return "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-[#4F8DF7] focus:outline-none focus:ring-2 focus:ring-[#4F8DF7]/25";
+}
 
 export default function MyPortfolioPage() {
   const router = useRouter();
@@ -22,30 +49,32 @@ export default function MyPortfolioPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Create portfolio form
   const [newPortfolioName, setNewPortfolioName] = useState("");
+  const [newPortfolioDescription, setNewPortfolioDescription] = useState("");
   const [isCreatingPortfolio, setIsCreatingPortfolio] = useState(false);
 
-  // Add holding form
-  const [newHolding, setNewHolding] = useState({ ticker: "", company_name: "", quantity: 1, buy_price: 0 });
+  const [newHolding, setNewHolding] = useState({
+    ticker: "",
+    company_name: "",
+    quantity: 1,
+    buy_price: 0,
+  });
   const [isAddingHolding, setIsAddingHolding] = useState(false);
   const [deletingHoldingId, setDeletingHoldingId] = useState<number | null>(null);
 
-  // Auto-complete state
   const [tickerSuggestions, setTickerSuggestions] = useState<LiveSearchStock[]>([]);
   const [isSearchingTicker, setIsSearchingTicker] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestionsRef = useRef<HTMLDivElement>(null);
-  const createInputRef = useRef<HTMLInputElement>(null);
+  const createNameRef = useRef<HTMLInputElement>(null);
 
-  // Rename inline state
-  const [renamingId, setRenamingId] = useState<number | null>(null);
-  const [renameValue, setRenameValue] = useState("");
+  const [editingPortfolioId, setEditingPortfolioId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [isSavingPortfolioMeta, setIsSavingPortfolioMeta] = useState(false);
 
-  // Check auth on mount
   useEffect(() => {
-    const token = getToken();
-    setIsLoggedIn(!!token);
+    setIsLoggedIn(!!getToken());
   }, []);
 
   useEffect(() => {
@@ -53,7 +82,6 @@ export default function MyPortfolioPage() {
     else if (isLoggedIn === false) setLoading(false);
   }, [isLoggedIn]);
 
-  // Close suggestions on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
@@ -64,7 +92,6 @@ export default function MyPortfolioPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Ticker search debounce
   useEffect(() => {
     if (newHolding.ticker.length < 2) {
       setTickerSuggestions([]);
@@ -91,9 +118,10 @@ export default function MyPortfolioPage() {
     try {
       const data = await getPortfolios();
       setPortfolios(data);
-      if (data.length > 0) setSelectedPortfolioId(prev => prev ?? data[0].id);
-    } catch (err: any) {
-      setError(err.message);
+      if (data.length > 0) setSelectedPortfolioId((prev) => prev ?? data[0].id);
+      else setSelectedPortfolioId(null);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load portfolios");
     } finally {
       setLoading(false);
     }
@@ -105,39 +133,65 @@ export default function MyPortfolioPage() {
     setIsCreatingPortfolio(true);
     setError(null);
     try {
-      const created = await createPortfolio(newPortfolioName.trim());
-      setPortfolios(prev => [...prev, created]);
+      const created = await createPortfolio(
+        newPortfolioName.trim(),
+        newPortfolioDescription.trim()
+      );
+      setPortfolios((prev) => [...prev, created]);
       setSelectedPortfolioId(created.id);
       setNewPortfolioName("");
-    } catch (err: any) {
-      setError(err.message);
+      setNewPortfolioDescription("");
+      setEditingPortfolioId(null);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Create failed");
     } finally {
       setIsCreatingPortfolio(false);
     }
   };
 
-  const handleDeletePortfolio = async (id: number) => {
+  const handleDeletePortfolio = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!confirm("Delete this portfolio and all its holdings?")) return;
     setError(null);
     try {
       await deletePortfolio(id);
-      const remaining = portfolios.filter(p => p.id !== id);
+      const remaining = portfolios.filter((p) => p.id !== id);
       setPortfolios(remaining);
       if (selectedPortfolioId === id) setSelectedPortfolioId(remaining[0]?.id ?? null);
-    } catch (err: any) {
-      setError(err.message);
+      if (editingPortfolioId === id) setEditingPortfolioId(null);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Delete failed");
     }
   };
 
-  const handleRenamePortfolio = async (id: number) => {
-    if (!renameValue.trim()) return;
+  const startEditPortfolio = (p: Portfolio, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingPortfolioId(p.id);
+    setEditName(p.name);
+    setEditDescription(p.description ?? "");
+  };
+
+  const cancelEditPortfolio = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setEditingPortfolioId(null);
+  };
+
+  const saveEditPortfolio = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!editName.trim()) return;
+    setIsSavingPortfolioMeta(true);
     setError(null);
     try {
-      const updated = await renamePortfolio(id, renameValue.trim());
-      setPortfolios(prev => prev.map(p => p.id === id ? { ...p, name: updated.name } : p));
-      setRenamingId(null);
-    } catch (err: any) {
-      setError(err.message);
+      const updated = await updatePortfolio(id, {
+        name: editName.trim(),
+        description: editDescription.trim(),
+      });
+      setPortfolios((prev) => prev.map((p) => (p.id === id ? updated : p)));
+      setEditingPortfolioId(null);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Update failed");
+    } finally {
+      setIsSavingPortfolioMeta(false);
     }
   };
 
@@ -146,7 +200,7 @@ export default function MyPortfolioPage() {
       ticker: stock.symbol,
       company_name: stock.company_name,
       quantity: newHolding.quantity,
-      buy_price: stock.current_price
+      buy_price: stock.current_price,
     });
     setTickerSuggestions([]);
     setShowSuggestions(false);
@@ -165,12 +219,14 @@ export default function MyPortfolioPage() {
         newHolding.quantity,
         newHolding.buy_price
       );
-      setPortfolios(prev =>
-        prev.map(p => p.id === selectedPortfolioId ? { ...p, holdings: [...p.holdings, added] } : p)
+      setPortfolios((prev) =>
+        prev.map((p) =>
+          p.id === selectedPortfolioId ? { ...p, holdings: [...p.holdings, added] } : p
+        )
       );
       setNewHolding({ ticker: "", company_name: "", quantity: 1, buy_price: 0 });
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Add holding failed");
     } finally {
       setIsAddingHolding(false);
     }
@@ -181,41 +237,44 @@ export default function MyPortfolioPage() {
     setError(null);
     try {
       await deleteHolding(holdingId);
-      setPortfolios(prev =>
-        prev.map(p => ({
+      setPortfolios((prev) =>
+        prev.map((p) => ({
           ...p,
-          holdings: p.holdings.filter(h => Number(h.id) !== Number(holdingId))
+          holdings: p.holdings.filter((h) => Number(h.id) !== Number(holdingId)),
         }))
       );
-      setSuccessMessage("Stock deleted successfully!");
+      setSuccessMessage("Holding removed.");
       setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Delete holding failed", err);
-      setError(err.message);
+      setError(err instanceof Error ? err.message : "Delete failed");
     } finally {
       setDeletingHoldingId(null);
     }
   };
 
   const focusCreate = () => {
-    createInputRef.current?.focus();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    createNameRef.current?.focus();
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   if (isLoggedIn === null) return null;
 
   if (!isLoggedIn) {
     return (
-      <div className="flex h-full items-center justify-center p-8">
-        <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-sm max-w-md w-full">
-          <LogIn className="w-12 h-12 text-[#4F8DF7] mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Sign in to continue</h2>
-          <p className="text-slate-500 mb-6">You need to be logged in to manage your investment portfolio.</p>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+          <LogIn className="mx-auto mb-4 h-12 w-12 text-[#4F8DF7]" />
+          <h2 className="mb-2 text-2xl font-semibold text-slate-900">Sign in required</h2>
+          <p className="mb-6 text-sm text-slate-600">
+            Log in to create portfolios and track holdings.
+          </p>
           <button
+            type="button"
             onClick={() => router.push("/login")}
-            className="w-full py-3 bg-[#4F8DF7] hover:bg-blue-600 text-white font-semibold rounded-xl transition-all"
+            className="w-full rounded-xl bg-[#4F8DF7] py-3 text-sm font-semibold text-white shadow-md transition hover:bg-blue-600"
           >
-            Go to Login
+            Go to login
           </button>
         </div>
       </div>
@@ -224,353 +283,489 @@ export default function MyPortfolioPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4F8DF7]"></div>
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-2 border-slate-200 border-t-[#4F8DF7]" />
       </div>
     );
   }
 
-  const selectedPortfolio = portfolios.find(p => p.id === selectedPortfolioId);
-  const filteredHoldings = selectedPortfolio?.holdings.filter(h =>
-    h.ticker.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    h.company_name.toLowerCase().includes(searchTerm.toLowerCase())
-  ) ?? [];
+  const selectedPortfolio = portfolios.find((p) => p.id === selectedPortfolioId);
+  const filteredHoldings =
+    selectedPortfolio?.holdings.filter(
+      (h) =>
+        h.ticker.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        h.company_name.toLowerCase().includes(searchTerm.toLowerCase())
+    ) ?? [];
 
-  const totalInvestment = selectedPortfolio?.holdings.reduce((sum, h) => sum + h.quantity * h.buy_price, 0) ?? 0;
+  const totalInvestment =
+    selectedPortfolio?.holdings.reduce((sum, h) => sum + h.quantity * Number(h.buy_price), 0) ?? 0;
   const totalHoldings = selectedPortfolio?.holdings.length ?? 0;
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-      {/* ---- Header ---- */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-3">
-            <span className="p-2 bg-blue-100 rounded-xl text-[#4F8DF7]">
-              <BriefcaseBusiness className="w-7 h-7" />
-            </span>
-            My Portfolios
-          </h1>
-          <p className="text-slate-500 mt-1 text-sm font-medium">Create portfolios and track your stock holdings</p>
+    <div className="mx-auto max-w-6xl space-y-8 text-slate-900">
+        {/* Header */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-[#4F8DF7] ring-1 ring-blue-100">
+                <BriefcaseBusiness className="h-6 w-6" />
+              </span>
+              Portfolios
+            </h1>
+            <p className="mt-1 text-sm text-slate-600">
+              Create books, edit metadata, and manage positions in one place.
+            </p>
+          </div>
         </div>
 
-        <form onSubmit={handleCreatePortfolio} className="flex gap-2 w-full md:w-auto">
-          <input
-            ref={createInputRef}
-            type="text" placeholder="New Portfolio Name"
-            value={newPortfolioName}
-            onChange={e => setNewPortfolioName(e.target.value)}
-            className="flex-1 md:w-56 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4F8DF7]/40 shadow-sm"
-          />
-          <button
-            type="submit"
-            disabled={isCreatingPortfolio || !newPortfolioName.trim()}
-            className="px-5 py-2.5 bg-[#4F8DF7] hover:bg-[#2563EB] text-white text-sm font-semibold rounded-xl flex items-center gap-1.5 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-          >
-            <Plus className="w-4 h-4" />
-            {isCreatingPortfolio ? "Creating..." : "Create"}
-          </button>
-        </form>
-      </div>
-
-      {/* ---- Error Banner ---- */}
-      {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-600">
-          <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
-          <div className="flex-1">
-            <p className="font-semibold text-sm">Error</p>
-            <p className="text-sm">{error}</p>
-          </div>
-          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 text-xl leading-none">&times;</button>
-        </div>
-      )}
-
-      {/* ---- Success Banner ---- */}
-      {successMessage && (
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-3 text-[#4F8DF7] animate-in fade-in slide-in-from-top-4 duration-300">
-          <Check className="w-5 h-5 mt-0.5 shrink-0" />
-          <div className="flex-1">
-            <p className="font-semibold text-sm">Action Confirmed</p>
-            <p className="text-sm">{successMessage}</p>
-          </div>
-          <button onClick={() => setSuccessMessage(null)} className="text-blue-400 hover:text-[#4F8DF7] text-xl leading-none">&times;</button>
-        </div>
-      )}
-
-      {/* ---- Empty State ---- */}
-      {portfolios.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-3xl p-16 text-center shadow-md max-w-2xl mx-auto border-dashed border-2">
-          <div className="p-4 bg-blue-50 rounded-2xl w-fit mx-auto mb-6 transform transition-transform hover:scale-110">
-            <Sparkles className="w-12 h-12 text-[#4F8DF7]" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-800 mb-3">Welcome to Your Portfolio Hub</h2>
-          <p className="text-slate-500 text-sm max-w-sm mx-auto mb-8 font-medium">
-            Start organizing your investments by creating your first custom portfolio.
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-             <input
-              type="text" placeholder="e.g. Long Term Savings"
-              value={newPortfolioName}
-              onChange={e => setNewPortfolioName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleCreatePortfolio(); }}
-              className="w-full sm:w-64 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4F8DF7]/40 transition-all font-medium"
-            />
+        {error && (
+          <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-800">
+            <span className="mt-0.5 font-semibold">Error</span>
+            <p className="flex-1 text-sm">{error}</p>
             <button
-              onClick={() => handleCreatePortfolio()}
-              disabled={isCreatingPortfolio || !newPortfolioName.trim()}
-              className="w-full sm:w-auto px-8 py-3 bg-[#4F8DF7] hover:bg-[#2563EB] text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-200 disabled:opacity-50"
+              type="button"
+              onClick={() => setError(null)}
+              className="text-red-500 hover:text-red-700"
+              aria-label="Dismiss"
             >
-              <Plus className="w-5 h-5" />
-              Get Started
+              ×
             </button>
           </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        )}
 
-          {/* ---- Portfolio Sidebar ---- */}
-          <div className="lg:col-span-1 space-y-2">
-            <div className="flex justify-between items-center px-1 mb-3">
-              <p className="text-[11px] font-bold tracking-widest text-slate-400 uppercase">Your Portfolios ({portfolios.length})</p>
-              <button 
-                onClick={focusCreate}
-                className="p-1 text-slate-400 hover:text-[#4F8DF7] hover:bg-blue-50 rounded-lg transition-all"
-                title="Create New"
+        {successMessage && (
+          <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900">
+            <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+            <p className="flex-1 text-sm">{successMessage}</p>
+            <button
+              type="button"
+              onClick={() => setSuccessMessage(null)}
+              className="text-emerald-600 hover:text-emerald-800"
+              aria-label="Dismiss"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        {/* Create portfolio */}
+        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:p-7">
+          <h2 className="text-lg font-semibold text-slate-900">Create portfolio</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Name your book and add an optional note. You can edit both later.
+          </p>
+
+          <form onSubmit={handleCreatePortfolio} className="mt-5 space-y-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+              <div className="flex-1 space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Portfolio name
+                </label>
+                <input
+                  ref={createNameRef}
+                  type="text"
+                  placeholder="e.g. Long-term quality"
+                  value={newPortfolioName}
+                  onChange={(e) => setNewPortfolioName(e.target.value)}
+                  className={inputClass()}
+                />
+              </div>
+              <div className="flex-1 space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Description (optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Thesis, horizon, or rules for this sleeve"
+                  value={newPortfolioDescription}
+                  onChange={(e) => setNewPortfolioDescription(e.target.value)}
+                  className={inputClass()}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isCreatingPortfolio || !newPortfolioName.trim()}
+                className="inline-flex h-[42px] shrink-0 items-center justify-center gap-2 rounded-xl bg-[#4F8DF7] px-6 text-sm font-semibold text-white shadow-md transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-45"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="h-4 w-4" />
+                {isCreatingPortfolio ? "Creating…" : "Create portfolio"}
               </button>
             </div>
-            {portfolios.map(p => (
-              <div key={p.id} className={`rounded-2xl border transition-all ${selectedPortfolioId === p.id ? "bg-[#4F8DF7] border-[#4F8DF7] shadow-md scale-[1.02]" : "bg-white border-slate-100 hover:border-[#4F8DF7]/40"}`}>
-                {renamingId === p.id ? (
-                  <div className="flex items-center gap-1 px-3 py-2">
-                    <input
-                      autoFocus
-                      value={renameValue}
-                      onChange={e => setRenameValue(e.target.value)}
-                      onKeyDown={e => { if (e.key === "Enter") handleRenamePortfolio(p.id); if (e.key === "Escape") setRenamingId(null); }}
-                      className="flex-1 bg-white/20 text-white placeholder-white/60 text-sm border border-white/30 rounded-lg px-2 py-1 focus:outline-none"
-                    />
-                    <button onClick={() => handleRenamePortfolio(p.id)} className="p-1 text-white/80 hover:text-white"><Check className="w-4 h-4" /></button>
-                    <button onClick={() => setRenamingId(null)} className="p-1 text-white/80 hover:text-white"><X className="w-4 h-4" /></button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 px-3 py-1">
-                    <button
-                      onClick={() => setSelectedPortfolioId(p.id)}
-                      className="flex-1 text-left py-2.5 font-medium text-sm group"
-                    >
-                      <div className={`truncate max-w-[120px] ${selectedPortfolioId === p.id ? "text-white" : "text-slate-700 font-semibold"}`}>{p.name}</div>
-                      <div className={`text-[11px] mt-0.5 ${selectedPortfolioId === p.id ? "text-blue-100" : "text-slate-400"}`}>
-                        {p.holdings.length} stock{p.holdings.length !== 1 ? "s" : ""}
-                      </div>
-                    </button>
-                    <div className="flex gap-0.5">
-                      <button
-                        onClick={() => { setRenamingId(p.id); setRenameValue(p.name); }}
-                        className={`p-1.5 rounded-lg transition-colors ${selectedPortfolioId === p.id ? "text-white/70 hover:text-white hover:bg-white/20" : "text-slate-400 hover:text-[#4F8DF7] hover:bg-blue-50"}`}
-                        title="Rename"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeletePortfolio(p.id)}
-                        className={`p-1.5 rounded-lg transition-colors ${selectedPortfolioId === p.id ? "text-white/70 hover:text-red-200 hover:bg-white/20" : "text-slate-400 hover:text-red-500 hover:bg-red-50"}`}
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
 
-          {/* ---- Main Panel ---- */}
-          <div className="lg:col-span-3 space-y-5">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Suggestions
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {PORTFOLIO_SUGGESTIONS.map((label) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => setNewPortfolioName(label)}
+                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-[#4F8DF7]/40 hover:bg-blue-50 hover:text-[#4F8DF7]"
+                  >
+                    + {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </form>
+        </section>
+
+        {portfolios.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-8 py-16 text-center">
+            <Sparkles className="mx-auto mb-4 h-10 w-10 text-[#4F8DF7]" />
+            <p className="text-lg font-semibold text-slate-900">No portfolios yet</p>
+            <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">
+              Use the form above to create your first portfolio, then add tickers and quantities below.
+            </p>
+          </div>
+        ) : (
+          <>
+            <section>
+              <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">Your portfolios</h2>
+                  <p className="text-sm text-slate-600">
+                    Select a card to view holdings, add positions, or remove lines.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={focusCreate}
+                  className="text-sm font-semibold text-[#4F8DF7] hover:text-blue-600"
+                >
+                  + New portfolio
+                </button>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {portfolios.map((p) => {
+                  const isSelected = selectedPortfolioId === p.id;
+                  const isEditing = editingPortfolioId === p.id;
+                  return (
+                    <div
+                      key={p.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => {
+                        setSelectedPortfolioId(p.id);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedPortfolioId(p.id);
+                        }
+                      }}
+                      className={`relative rounded-2xl border bg-white p-5 text-left shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all outline-none focus-visible:ring-2 focus-visible:ring-[#4F8DF7]/40 ${
+                        isSelected
+                          ? "border-[#4F8DF7] ring-2 ring-[#4F8DF7]/20 shadow-[0_8px_30px_rgb(79,141,247,0.12)]"
+                          : "border-slate-100 hover:border-slate-200 hover:shadow-md"
+                      }`}
+                    >
+                      <div className="mb-4 flex items-start justify-between gap-2">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-[#4F8DF7] ring-1 ring-blue-100">
+                          <BriefcaseBusiness className="h-5 w-5" />
+                        </div>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={(e) => startEditPortfolio(p, e)}
+                            className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-800"
+                            title="Edit portfolio"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeletePortfolio(p.id, e)}
+                            className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                            title="Delete portfolio"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {isEditing ? (
+                        <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className={inputClass()}
+                            placeholder="Name"
+                          />
+                          <input
+                            value={editDescription}
+                            onChange={(e) => setEditDescription(e.target.value)}
+                            className={inputClass()}
+                            placeholder="Description"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              disabled={isSavingPortfolioMeta || !editName.trim()}
+                              onClick={(e) => saveEditPortfolio(p.id, e)}
+                              className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-[#4F8DF7] py-2 text-xs font-semibold text-white hover:bg-blue-600 disabled:opacity-50"
+                            >
+                              {isSavingPortfolioMeta ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Check className="h-3.5 w-3.5" />
+                              )}
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelEditPortfolio}
+                              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <h3 className="font-semibold text-slate-900">{p.name}</h3>
+                          <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-600">
+                            {(p.description ?? "").trim() || "No description provided."}
+                          </p>
+                          <p className="mt-3 text-xs font-medium text-slate-500">
+                            {p.holdings.length} position{p.holdings.length !== 1 ? "s" : ""}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
             {selectedPortfolio && (
-              <>
-                {/* Stats Row */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  <div className="col-span-1 bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
-                    <p className="text-[11px] font-bold tracking-widest text-slate-400 uppercase mb-1">Total Investment</p>
-                    <p className="text-2xl font-extrabold text-slate-900">
-                      ₹{totalInvestment.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+              <section className="space-y-5 border-t border-slate-200 pt-8">
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                      Cost basis (INR)
+                    </p>
+                    <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">
+                      ₹
+                      {totalInvestment.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                     </p>
                   </div>
-                  <div className="col-span-1 bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
-                    <p className="text-[11px] font-bold tracking-widest text-slate-400 uppercase mb-1">Holdings</p>
-                    <p className="text-2xl font-extrabold text-slate-900">{totalHoldings}</p>
+                  <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                      Positions
+                    </p>
+                    <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{totalHoldings}</p>
                   </div>
-                  <div className="col-span-2 md:col-span-1 bg-gradient-to-br from-[#4F8DF7]/10 to-blue-50 border border-blue-100 rounded-2xl p-5 shadow-sm">
-                    <p className="text-[11px] font-bold tracking-widest text-[#4F8DF7] uppercase mb-1">Selected Portfolio</p>
-                    <p className="text-lg font-bold text-slate-900 truncate">{selectedPortfolio.name}</p>
+                  <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-[#4F8DF7]/8 to-blue-50/80 p-5 shadow-sm">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[#4F8DF7]">
+                      Active book
+                    </p>
+                    <p className="mt-1 truncate text-lg font-semibold text-slate-900">{selectedPortfolio.name}</p>
                   </div>
                 </div>
 
-                {/* Add Holding Form */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                  <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-                    <Plus className="w-4 h-4 text-[#4F8DF7]" />
-                    Add Stock to &quot;{selectedPortfolio.name}&quot;
+                <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:p-6">
+                  <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <Plus className="h-4 w-4 text-[#4F8DF7]" />
+                    Add holding — {selectedPortfolio.name}
                   </h3>
-                  <form onSubmit={handleAddHolding} className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {/* Ticker Input with Suggestion */}
-                    <div className="relative" ref={suggestionsRef}>
-                      <div className="relative">
-                        <input
-                          type="text" placeholder="Ticker (e.g. RELIANCE)" required
-                          value={newHolding.ticker}
-                          autoComplete="off"
-                          onChange={e => {
-                            setNewHolding({ ...newHolding, ticker: e.target.value.toUpperCase() });
-                            setShowSuggestions(true);
-                          }}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4F8DF7]/40 focus:bg-white transition-all pr-8"
-                        />
-                        {isSearchingTicker && (
-                          <div className="absolute right-2.5 top-2.5">
-                            <Loader2 className="w-4 h-4 animate-spin text-[#4F8DF7]" />
-                          </div>
-                        )}
-                      </div>
-                      
+                  <form onSubmit={handleAddHolding} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="relative sm:col-span-1" ref={suggestionsRef}>
+                      <input
+                        type="text"
+                        placeholder="Ticker (e.g. RELIANCE)"
+                        required
+                        value={newHolding.ticker}
+                        autoComplete="off"
+                        onChange={(e) => {
+                          setNewHolding({ ...newHolding, ticker: e.target.value.toUpperCase() });
+                          setShowSuggestions(true);
+                        }}
+                        className={inputClass()}
+                      />
+                      {isSearchingTicker && (
+                        <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-[#4F8DF7]" />
+                      )}
                       {showSuggestions && tickerSuggestions.length > 0 && (
-                        <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-48 overflow-y-auto overflow-x-hidden">
+                        <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
                           {tickerSuggestions.map((stk, i) => (
                             <button
                               key={i}
                               type="button"
                               onClick={() => handleSelectSuggestion(stk)}
-                              className="w-full px-3 py-2 text-left hover:bg-blue-50 flex flex-col transition-colors border-b border-slate-50 last:border-0"
+                              className="flex w-full flex-col border-b border-slate-100 px-3 py-2 text-left last:border-0 hover:bg-blue-50/80"
                             >
-                              <div className="flex justify-between items-center w-full">
-                                <span className="font-bold text-slate-900 text-[13px]">{stk.symbol}</span>
-                                <span className="text-[12px] font-semibold text-[#4F8DF7]">₹{stk.current_price}</span>
-                              </div>
-                              <span className="text-[11px] text-slate-500 truncate w-full">{stk.company_name}</span>
+                              <span className="text-sm font-semibold text-slate-900">{stk.symbol}</span>
+                              <span className="truncate text-xs text-slate-500">{stk.company_name}</span>
+                              <span className="text-xs font-medium text-[#4F8DF7]">
+                                ₹{stk.current_price}
+                              </span>
                             </button>
                           ))}
                         </div>
                       )}
                     </div>
-
                     <input
-                      type="text" placeholder="Company Name" required
+                      type="text"
+                      placeholder="Company name"
+                      required
                       value={newHolding.company_name}
-                      onChange={e => setNewHolding({ ...newHolding, company_name: e.target.value })}
-                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4F8DF7]/40 focus:bg-white transition-all"
+                      onChange={(e) =>
+                        setNewHolding({ ...newHolding, company_name: e.target.value })
+                      }
+                      className={inputClass()}
                     />
                     <input
-                      type="number" placeholder="Qty" min="1" required
+                      type="number"
+                      placeholder="Quantity"
+                      min={1}
+                      required
                       value={newHolding.quantity || ""}
-                      onChange={e => setNewHolding({ ...newHolding, quantity: parseInt(e.target.value) })}
-                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4F8DF7]/40 focus:bg-white transition-all"
+                      onChange={(e) =>
+                        setNewHolding({
+                          ...newHolding,
+                          quantity: parseInt(e.target.value, 10) || 1,
+                        })
+                      }
+                      className={inputClass()}
                     />
                     <input
-                      type="number" placeholder="Buy Price (₹)" min="0" step="0.01" required
+                      type="number"
+                      placeholder="Buy price (₹)"
+                      min={0}
+                      step="0.01"
+                      required
                       value={newHolding.buy_price || ""}
-                      onChange={e => setNewHolding({ ...newHolding, buy_price: parseFloat(e.target.value) })}
-                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4F8DF7]/40 focus:bg-white transition-all"
+                      onChange={(e) =>
+                        setNewHolding({
+                          ...newHolding,
+                          buy_price: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className={inputClass()}
                     />
                     <button
-                      type="submit" disabled={isAddingHolding}
-                      className="col-span-2 md:col-span-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg transition-colors flex justify-center items-center gap-2 disabled:opacity-60"
+                      type="submit"
+                      disabled={isAddingHolding}
+                      className="sm:col-span-2 lg:col-span-4 flex items-center justify-center gap-2 rounded-xl bg-slate-900 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
                     >
-                      {isAddingHolding
-                        ? <><span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" /> Adding...</>
-                        : <><Plus className="w-4 h-4" /> Add to Portfolio</>
-                      }
+                      {isAddingHolding ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" /> Adding…
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4" />
+                          Add to portfolio
+                        </>
+                      )}
                     </button>
                   </form>
                 </div>
 
-                {/* Holdings Table */}
-                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                  <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center gap-3">
-                    <h3 className="text-sm font-bold text-slate-900">Current Holdings</h3>
+                <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                  <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <h3 className="text-sm font-semibold text-slate-900">Holdings</h3>
                     <div className="relative">
-                      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                       <input
-                        type="text" placeholder="Search stocks..."
+                        type="text"
+                        placeholder="Search…"
                         value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                        className="pl-8 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-full text-[13px] focus:outline-none focus:ring-2 focus:ring-[#4F8DF7]/30 focus:bg-white w-40"
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full rounded-full border border-slate-200 bg-slate-50 py-2 pl-9 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#4F8DF7] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4F8DF7]/20 sm:w-52"
                       />
                     </div>
                   </div>
 
                   {filteredHoldings.length === 0 ? (
-                    <div className="p-12 text-center text-slate-400 text-sm">
-                      {searchTerm ? "No stocks match your search." : "No stocks yet. Use the form above to add your first holding."}
+                    <div className="px-5 py-14 text-center text-sm text-slate-600">
+                      {searchTerm
+                        ? "No rows match your search."
+                        : "No positions yet. Add a ticker above."}
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left">
+                      <table className="w-full text-left text-sm">
                         <thead>
-                          <tr className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold border-b border-slate-100 bg-slate-50/60">
+                          <tr className="border-b border-slate-100 bg-slate-50/80 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                             <th className="px-5 py-3">Asset</th>
                             <th className="px-5 py-3 text-right">Qty</th>
-                            <th className="px-5 py-3 text-right">Buy Price</th>
-                            <th className="px-5 py-3 text-right">Total Value</th>
-                            <th className="px-5 py-3 text-right">Bought On</th>
-                            <th className="px-5 py-3 text-center">Action</th>
+                            <th className="px-5 py-3 text-right">Buy</th>
+                            <th className="px-5 py-3 text-right">Cost</th>
+                            <th className="px-5 py-3 text-right">As of</th>
+                            <th className="px-5 py-3 text-center"> </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                          {filteredHoldings.map(h => (
-                            <tr key={h.id} className="hover:bg-blue-50/30 transition-colors group">
-                              <td className="px-5 py-3.5">
-                                <div className="font-bold text-slate-900 text-sm">{h.ticker}</div>
-                                <div className="text-[12px] text-slate-500 truncate max-w-[160px]">{h.company_name}</div>
+                          {filteredHoldings.map((h) => (
+                            <tr key={h.id} className="hover:bg-slate-50/80">
+                              <td className="px-5 py-3">
+                                <div className="font-semibold text-slate-900">{h.ticker}</div>
+                                <div className="max-w-[200px] truncate text-xs text-slate-500">
+                                  {h.company_name}
+                                </div>
                               </td>
-                              <td className="px-5 py-3.5 text-right text-sm font-semibold text-slate-700">{h.quantity}</td>
-                              <td className="px-5 py-3.5 text-right text-sm font-medium text-slate-700">
-                                ₹{Number(h.buy_price).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                              <td className="px-5 py-3 text-right tabular-nums text-slate-700">
+                                {h.quantity}
                               </td>
-                              <td className="px-5 py-3.5 text-right text-sm font-bold text-slate-900">
-                                ₹{(h.quantity * Number(h.buy_price)).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                              <td className="px-5 py-3 text-right tabular-nums text-slate-700">
+                                ₹
+                                {Number(h.buy_price).toLocaleString("en-IN", {
+                                  maximumFractionDigits: 2,
+                                })}
                               </td>
-                              <td className="px-5 py-3.5 text-right text-xs text-slate-400">
-                                {new Date(h.buy_time).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                              <td className="px-5 py-3 text-right font-medium tabular-nums text-slate-900">
+                                ₹
+                                {(h.quantity * Number(h.buy_price)).toLocaleString("en-IN", {
+                                  maximumFractionDigits: 2,
+                                })}
                               </td>
-                              <td className="px-5 py-3.5 text-center">
+                              <td className="px-5 py-3 text-right text-xs text-slate-500">
+                                {new Date(h.buy_time).toLocaleDateString("en-IN", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })}
+                              </td>
+                              <td className="px-5 py-3 text-center">
                                 <button
+                                  type="button"
                                   onClick={() => handleDeleteHolding(h.id)}
                                   disabled={deletingHoldingId === h.id}
-                                  className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                                  title="Remove holding"
+                                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-600 hover:text-white disabled:opacity-40"
                                 >
-                                  {deletingHoldingId === h.id 
-                                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                                    : <Trash2 className="w-4 h-4" />
-                                  }
+                                  {deletingHoldingId === h.id ? "…" : "Remove"}
                                 </button>
                               </td>
                             </tr>
                           ))}
                         </tbody>
-                        {filteredHoldings.length > 0 && (
-                          <tfoot>
-                            <tr className="bg-slate-50 border-t border-slate-100">
-                              <td colSpan={3} className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Total</td>
-                              <td className="px-5 py-3 text-right text-sm font-extrabold text-[#4F8DF7]">
-                                ₹{filteredHoldings.reduce((s, h) => s + h.quantity * Number(h.buy_price), 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
-                              </td>
-                              <td colSpan={2} />
-                            </tr>
-                          </tfoot>
-                        )}
+                        <tfoot>
+                          <tr className="border-t border-slate-100 bg-slate-50/60">
+                            <td colSpan={3} className="px-5 py-3 text-xs font-semibold text-slate-500">
+                              Total cost
+                            </td>
+                            <td className="px-5 py-3 text-right text-sm font-bold tabular-nums text-[#4F8DF7]">
+                              ₹
+                              {filteredHoldings
+                                .reduce((s, h) => s + h.quantity * Number(h.buy_price), 0)
+                                .toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                            </td>
+                            <td colSpan={2} />
+                          </tr>
+                        </tfoot>
                       </table>
                     </div>
                   )}
                 </div>
-              </>
+              </section>
             )}
-          </div>
-        </div>
-      )}
+          </>
+        )}
     </div>
   );
 }
