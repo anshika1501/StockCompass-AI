@@ -78,13 +78,13 @@ Returns detailed stock price data for charts.
    python manage.py createsuperuser
    ```
 
-7. **Initialize stock data**:
+
+7. **Initialize stock data and price history (NIFTY 500)**:
    ```bash
-   python manage.py shell
-   >>> from stocks.services import StockDataService
-   >>> StockDataService.initialize_categories_and_stocks()
-   >>> exit()
+   python manage.py init_stocks --update-prices --period 1mo
    ```
+
+   This will load all NIFTY 500 stocks from `backend/data/ind_nifty500list.csv`, fetch their info and price history, and populate the database.
 
 8. **Start development server**:
    ```bash

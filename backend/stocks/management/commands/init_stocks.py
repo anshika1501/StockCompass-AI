@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
 from stocks.services import StockDataService
+from stocks.bootstrap import bootstrap_stock_data
 
 
 class Command(BaseCommand):
@@ -17,6 +18,16 @@ class Command(BaseCommand):
             default='1mo',
             help='Period for price data (default: 1mo)',
         )
+        parser.add_argument(
+            '--embed',
+            action='store_true',
+            help='Also build stock embeddings after initialization',
+        )
+        parser.add_argument(
+            '--embed-force',
+            action='store_true',
+            help='Rebuild embeddings even if they already exist',
+        )
     
     def handle(self, *args, **options):
         self.stdout.write('Initializing stock categories and data...')
@@ -29,12 +40,12 @@ class Command(BaseCommand):
                     self.style.SUCCESS('Successfully initialized stock categories and data')
                 )
                 
-                if options['update_prices']:
+                if options['update_prices'] or options['embed']:
                     self.stdout.write('Updating stock prices...')
                     price_success = StockDataService.update_stock_prices(
                         period=options['period']
                     )
-                    
+
                     if price_success:
                         self.stdout.write(
                             self.style.SUCCESS('Successfully updated stock prices')
@@ -43,6 +54,18 @@ class Command(BaseCommand):
                         self.stdout.write(
                             self.style.WARNING('Stock prices update completed with some errors')
                         )
+
+                if options['embed']:
+                    self.stdout.write('Building stock embeddings...')
+                    bootstrap_stock_data(
+                        force_init=False,
+                        update_prices=False,
+                        embed=True,
+                        embed_force=options['embed_force'],
+                    )
+                    self.stdout.write(
+                        self.style.SUCCESS('Embeddings build completed')
+                    )
             else:
                 self.stdout.write(
                     self.style.ERROR('Failed to initialize stock data')

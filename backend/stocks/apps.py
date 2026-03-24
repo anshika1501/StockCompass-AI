@@ -6,5 +6,5 @@ class StocksConfig(AppConfig):
     name = 'stocks'
     
     def ready(self):
-        # Import signals here if needed
-        pass
+        # Register signal handlers
+        from . import signals  # noqa: F401

@@ -37,7 +37,7 @@ class Command(BaseCommand):
             )
 
         self.stdout.write('Populating Indian Nifty 50 stocks from yfinance...')
-        self.stdout.write('  (This may take 3-5 minutes — fetching 50 stocks in parallel)\n')
+        self.stdout.write('  (This may take 3-5 minutes — fetching stocks in parallel)\n')
 
         success = StockDataService.initialize_categories_and_stocks()
 

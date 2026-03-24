@@ -1,9 +1,13 @@
-import yfinance as yf
-import pandas as pd
-from datetime import datetime, timedelta
-from django.utils import timezone
-from .models import Stock, StockPrice, StockCategory
 import logging
+import math
+import os
+from datetime import datetime, timedelta
+
+import pandas as pd
+import yfinance as yf
+from django.utils import timezone
+
+from .models import Stock, StockPrice, StockCategory
 
 logger = logging.getLogger(__name__)
 
@@ -62,50 +66,160 @@ CATEGORY_META = {
     },
 }
 
+NIFTY500_CSV_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "data", "ind_nifty500list.csv")
+)
+
+
+def _normalize_symbol(symbol: str) -> str:
+    value = (symbol or "").strip().upper()
+    if not value:
+        return ""
+    if not value.endswith(".NS"):
+        value = f"{value}.NS"
+    return value
+
+
+def _map_industry_to_category(industry: str) -> str:
+    value = (industry or "").strip().lower()
+    if not value:
+        return "Miscellaneous"
+    if "financial" in value or "bank" in value or "insurance" in value:
+        return "Banking & Finance"
+    if "information technology" in value or "technology" in value:
+        return "Information Technology"
+    if "telecommunication" in value or "telecom" in value:
+        return "Telecom & Infrastructure"
+    if "power" in value or "oil" in value or "gas" in value or "energy" in value:
+        return "Energy & Utilities"
+    if "automobile" in value or "auto" in value:
+        return "Automotive"
+    if "health" in value or "pharma" in value:
+        return "Healthcare & Pharma"
+    if "metal" in value or "mining" in value or "construction materials" in value:
+        return "Metals & Materials"
+    if "consumer" in value or "fmcg" in value:
+        return "Consumer Goods"
+    return industry.strip() or "Miscellaneous"
+
+
+def _finite_or_none(value):
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return None
+    return num if math.isfinite(num) else None
+
 
 class StockDataService:
     """Service class to handle stock data fetching using yfinance."""
 
     # Predefined stock categories with Nifty 50 Indian stocks (NSE symbols)
     STOCK_CATEGORIES = {
-        'Banking & Finance': [
-            'HDFCBANK.NS', 'ICICIBANK.NS', 'SBIN.NS', 'KOTAKBANK.NS', 'AXISBANK.NS',
-            'BAJFINANCE.NS', 'BAJAJFINSV.NS', 'INDUSINDBK.NS', 'SHRIRAMFIN.NS',
-        ],
-        'Information Technology': [
-            'TCS.NS', 'INFOSYS.NS', 'HCLTECH.NS', 'WIPRO.NS', 'TECHM.NS',
-        ],
-        'Energy & Utilities': [
-            'RELIANCE.NS', 'ONGC.NS', 'NTPC.NS', 'POWERGRID.NS', 'BPCL.NS', 'COALINDIA.NS',
-        ],
-        'Automotive': [
-            'MARUTI.NS', 'TATAMOTORS.NS', 'EICHERMOT.NS', 'HEROMOTOCO.NS', 'BAJAJ-AUTO.NS', 'M&M.NS',
-        ],
-        'Consumer Goods': [
-            'HINDUNILVR.NS', 'ITC.NS', 'NESTLEIND.NS', 'BRITANNIA.NS', 'TATACONSUM.NS',
-        ],
-        'Metals & Materials': [
-            'JSWSTEEL.NS', 'TATASTEEL.NS', 'HINDALCO.NS', 'GRASIM.NS', 'ULTRACEMCO.NS', 'ADANIENT.NS',
-        ],
-        'Healthcare & Pharma': [
-            'SUNPHARMA.NS', 'DRREDDY.NS', 'CIPLA.NS', 'DIVISLAB.NS', 'APOLLOHOSP.NS',
-        ],
-        'Telecom & Infrastructure': [
-            'BHARTIARTL.NS', 'ADANIPORTS.NS', 'LT.NS', 'TITAN.NS',
-        ],
-        'Insurance': [
-            'HDFCLIFE.NS', 'SBILIFE.NS',
-        ],
-        'Chemicals & Others': [
-            'UPL.NS', 'ASIANPAINT.NS',
-        ],
+    'Banking & Finance': [
+        'HDFCBANK.NS','ICICIBANK.NS','SBIN.NS','KOTAKBANK.NS','AXISBANK.NS',
+        'BAJFINANCE.NS','BAJAJFINSV.NS','INDUSINDBK.NS','SHRIRAMFIN.NS','BANDHANBNK.NS',
+        'PNB.NS','BANKBARODA.NS','CANBK.NS','IDFCFIRSTB.NS','FEDERALBNK.NS',
+    ],
+    'Insurance': [
+        'HDFCLIFE.NS','SBILIFE.NS','ICICIPRULI.NS','ICICIGI.NS','LICHSGFIN.NS',
+    ],
+    'Information Technology': [
+        'TCS.NS','INFY.NS','HCLTECH.NS','WIPRO.NS','TECHM.NS',
+        'LTIM.NS','LIT.NS','MINDTREE.NS','PERSISTENT.NS','COFORGE.NS','MPHASIS.NS','KPITTECH.NS',
+    ],
+    'Energy & Utilities': [
+        'RELIANCE.NS','ONGC.NS','BPCL.NS','GAIL.NS','IOC.NS',
+        'NTPC.NS','POWERGRID.NS','TATAPOWER.NS','ADANIGREEN.NS','ADANIENERGY.NS','COALINDIA.NS','ADANIPOWER.NS',
+    ],
+    'Automotive': [
+        'MARUTI.NS','TATAMOTORS.NS','EICHERMOT.NS','HEROMOTOCO.NS','BAJAJ-AUTO.NS',
+        'M&M.NS','TVSMOTOR.NS','ASHOKLEY.NS','BALKRISIND.NS','MRF.NS','BOSCHLTD.NS','ENDURANCE.NS','EXIDEIND.NS',
+    ],
+    'Consumer Goods': [
+        'HINDUNILVR.NS','ITC.NS','NESTLEIND.NS','BRITANNIA.NS','TATACONSUM.NS',
+        'VBL.NS','GODREJCP.NS','DABUR.NS','MARICO.NS','COLPAL.NS','VSTIND.NS','UBL.NS',
+    ],
+    'Consumer Durables': [
+        'TITAN.NS',
+    ],
+    'Healthcare & Pharma': [
+        'SUNPHARMA.NS','DRREDDY.NS','CIPLA.NS','DIVISLAB.NS','LUPIN.NS',
+        'AUROPHARMA.NS','MANKIND.NS','ZYDUSLIFE.NS','TORNTPHARM.NS','APOLLOHOSP.NS',
+        'ABBOTINDIA.NS','GLENMARK.NS','ALKEM.NS','GLAND.NS','JUBILANT.NS',
+    ],
+    'Metals & Materials': [
+        'JSWSTEEL.NS','TATASTEEL.NS','HINDALCO.NS','GRASIM.NS','ULTRACEMCO.NS',
+        'JINDALSTEL.NS','NMDC.NS','SAIL.NS','SHREECEM.NS','VEDL.NS','JSWENERGY.NS',
+    ],
+    'Capital Goods & Industrial': [
+        'LT.NS','BEL.NS','IRFC.NS','BHEL.NS','RITES.NS','ABB.NS','CEATLTD.NS',
+    ],
+    'Telecommunication': [
+        'BHARTIARTL.NS','TATACOMM.NS','VI.NS',
+    ],
+    'Media & Entertainment': [
+        'SUNTV.NS','ZEEL.NS','PVR.NS','TV18BRDCST.NS',
+    ],
+    'Agricultural Chemicals': [
+        'UPL.NS','ASIANPAINT.NS','PIDILITIND.NS','SRF.NS','TATACHEM.NS','RALLIS.NS',
+    ],
+    'Miscellaneous': [
+        'ADANIENT.NS','CONCOR.NS','3MINDIA.NS','GRANULES.NS','SRTRANSFIN.NS','DIXON.NS',
+    ],
     }
+
+    @classmethod
+    def _load_categories_from_csv(cls):
+        if not os.path.exists(NIFTY500_CSV_PATH):
+            return None
+
+        try:
+            df = pd.read_csv(NIFTY500_CSV_PATH)
+        except Exception as exc:
+            logger.error("Failed to read NIFTY500 CSV: %s", exc)
+            return None
+
+        required = {"Symbol", "Company Name", "Industry"}
+        if not required.issubset(set(df.columns)):
+            logger.error("NIFTY500 CSV missing required columns: %s", required)
+            return None
+
+        categories = {}
+        for _, row in df.iterrows():
+            symbol = _normalize_symbol(str(row.get("Symbol", "")))
+            if not symbol:
+                continue
+            company_name = str(row.get("Company Name", "")).strip()
+            industry = str(row.get("Industry", "")).strip()
+            category_name = _map_industry_to_category(industry)
+            categories.setdefault(category_name, []).append({
+                "symbol": symbol,
+                "name": company_name,
+                "industry": industry,
+            })
+
+        return categories or None
+
 
     @classmethod
     def initialize_categories_and_stocks(cls):
         """Initialize stock categories and stocks in the database."""
         try:
-            for category_name, stock_symbols in cls.STOCK_CATEGORIES.items():
+            csv_categories = cls._load_categories_from_csv()
+            if csv_categories:
+                cls.STOCK_CATEGORIES = {
+                    cat: [item["symbol"] for item in items]
+                    for cat, items in csv_categories.items()
+                }
+                categories = csv_categories
+            else:
+                categories = {
+                    cat: [{"symbol": sym, "name": "", "industry": ""} for sym in syms]
+                    for cat, syms in cls.STOCK_CATEGORIES.items()
+                }
+
+            for category_name, stock_items in categories.items():
                 meta = CATEGORY_META.get(category_name, {})
                 category, created = StockCategory.objects.get_or_create(
                     name=category_name,
@@ -123,19 +237,24 @@ class StockDataService:
                 else:
                     logger.info(f"Created category: {category_name}")
 
-                for symbol in stock_symbols:
+                for item in stock_items:
+                    symbol = item.get("symbol", "")
+                    if not symbol:
+                        continue
                     try:
                         stock_data = cls.fetch_stock_info(symbol)
+                        fallback_name = item.get("name") or symbol
+                        fallback_industry = item.get("industry") or ""
                         if stock_data:
                             stock, stock_created = Stock.objects.get_or_create(
                                 symbol=symbol,
                                 defaults={
-                                    'name': stock_data.get('name', symbol),
+                                    'name': stock_data.get('name') or fallback_name,
                                     'category': category,
                                     'exchange': stock_data.get('exchange', ''),
                                     'currency': stock_data.get('currency', 'USD'),
                                     'sector': stock_data.get('sector', ''),
-                                    'industry': stock_data.get('industry', ''),
+                                    'industry': stock_data.get('industry', '') or fallback_industry,
                                     'market_cap': stock_data.get('market_cap'),
                                     'current_price': stock_data.get('current_price', 0),
                                     'previous_close': stock_data.get('previous_close', 0),
@@ -160,6 +279,10 @@ class StockDataService:
                                     val = stock_data.get(key)
                                     if val is not None:
                                         setattr(stock, key, val)
+                                if not stock.name:
+                                    stock.name = fallback_name
+                                if not stock.industry:
+                                    stock.industry = fallback_industry
                                 stock.save()
                     except Exception as e:
                         logger.error(f"Error processing stock {symbol}: {str(e)}")
@@ -176,25 +299,32 @@ class StockDataService:
         try:
             ticker = yf.Ticker(symbol)
             info = ticker.info
-            current_price = info.get('currentPrice') or info.get('regularMarketPrice', 0) or 0
-            previous_close = info.get('previousClose') or info.get('regularMarketPreviousClose', 0) or 0
+            current_price = _finite_or_none(info.get('currentPrice'))
+            if current_price is None:
+                current_price = _finite_or_none(info.get('regularMarketPrice'))
+            current_price = current_price or 0
+
+            previous_close = _finite_or_none(info.get('previousClose'))
+            if previous_close is None:
+                previous_close = _finite_or_none(info.get('regularMarketPreviousClose'))
+            previous_close = previous_close or 0
             return {
                 'name': info.get('longName', info.get('shortName', symbol)),
                 'exchange': info.get('exchange', ''),
                 'currency': info.get('currency', 'USD'),
                 'sector': info.get('sector', ''),
                 'industry': info.get('industry', ''),
-                'market_cap': info.get('marketCap'),
+                'market_cap': _finite_or_none(info.get('marketCap')),
                 'current_price': current_price,
                 'previous_close': previous_close,
-                'fifty_two_week_high': info.get('fiftyTwoWeekHigh', 0) or 0,
-                'fifty_two_week_low': info.get('fiftyTwoWeekLow', 0) or 0,
-                'pe_ratio': info.get('trailingPE') or info.get('forwardPE'),
+                'fifty_two_week_high': _finite_or_none(info.get('fiftyTwoWeekHigh')) or 0,
+                'fifty_two_week_low': _finite_or_none(info.get('fiftyTwoWeekLow')) or 0,
+                'pe_ratio': _finite_or_none(info.get('trailingPE')) or _finite_or_none(info.get('forwardPE')),
                 'description': info.get('longBusinessSummary', ''),
                 'website': info.get('website', ''),
                 'city': info.get('city', ''),
                 'country': info.get('country', ''),
-                'employees': info.get('fullTimeEmployees'),
+                'employees': _finite_or_none(info.get('fullTimeEmployees')),
             }
         except Exception as e:
             logger.error(f"Error fetching info for {symbol}: {str(e)}")
@@ -343,3 +473,73 @@ class StockDataService:
         except Exception as e:
             logger.error(f"Error searching stocks for '{query}': {str(e)}")
             return []
+
+    @staticmethod
+    def update_stock_prices(period='1mo', interval=None, symbols=None, max_stocks=None):
+        """Fetch and persist price history for stocks into StockPrice."""
+        qs = Stock.objects.filter(is_active=True).order_by('id')
+        if symbols:
+            qs = qs.filter(symbol__in=symbols)
+        if max_stocks:
+            qs = qs[:max_stocks]
+
+        errors = 0
+        for stock in qs:
+            try:
+                interval_map = {
+                    '1d': '5m', '5d': '15m', '1mo': '1d',
+                    '3mo': '1d', '6mo': '1d', '1y': '1wk',
+                    '2y': '1wk', '5y': '1mo', 'ytd': '1d', 'max': '1mo',
+                }
+                resolved_interval = interval or interval_map.get(period, '1d')
+
+                ticker = yf.Ticker(stock.symbol)
+                hist = ticker.history(period=period, interval=resolved_interval)
+                if hist is None or hist.empty:
+                    continue
+
+                for date, row in hist.iterrows():
+                    price_date = date.date() if hasattr(date, 'date') else date
+                    close_val = _finite_or_none(row.get('Close')) or 0
+                    open_val = _finite_or_none(row.get('Open'))
+                    high_val = _finite_or_none(row.get('High'))
+                    low_val = _finite_or_none(row.get('Low'))
+                    adj_close_val = _finite_or_none(row.get('Adj Close'))
+                    StockPrice.objects.update_or_create(
+                        stock=stock,
+                        date=price_date,
+                        defaults={
+                            'open_price': open_val if open_val is not None else close_val,
+                            'high_price': high_val if high_val is not None else close_val,
+                            'low_price': low_val if low_val is not None else close_val,
+                            'close_price': close_val,
+                            'adj_close': adj_close_val if adj_close_val is not None else close_val,
+                            'volume': int(row.get('Volume', 0) or 0),
+                        }
+                    )
+
+                closes = hist['Close'].dropna() if 'Close' in hist.columns else None
+                if closes is not None and not closes.empty:
+                    current_price = float(closes.iloc[-1])
+                    previous_close = float(closes.iloc[-2]) if len(closes) > 1 else current_price
+                    stock.current_price = current_price
+                    stock.previous_close = previous_close
+
+                try:
+                    info = ticker.info or {}
+                    high_val = _finite_or_none(info.get('fiftyTwoWeekHigh'))
+                    low_val = _finite_or_none(info.get('fiftyTwoWeekLow'))
+                    if high_val is not None:
+                        stock.fifty_two_week_high = high_val
+                    if low_val is not None:
+                        stock.fifty_two_week_low = low_val
+                except Exception:
+                    pass
+
+                stock.save(update_fields=['current_price', 'previous_close', 'fifty_two_week_high', 'fifty_two_week_low', 'updated_at'])
+
+            except Exception as e:
+                errors += 1
+                logger.error("Error updating prices for %s: %s", stock.symbol, str(e))
+
+        return errors == 0
