@@ -20,25 +20,25 @@ export default function UserBanner() {
     if (!user) return null;
 
     return (
-        <div className="bg-primary/5 border border-primary/20 rounded-2xl p-6 mb-8 flex items-center justify-between shadow-sm">
-            <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
-                    <User className="h-6 w-6 text-primary" />
+        <div className="bg-[#DBEAFE]/30 border border-[#DBEAFE] rounded-3xl p-8 mb-10 flex items-center justify-between shadow-sm backdrop-blur-sm">
+            <div className="flex items-center gap-6">
+                <div className="w-16 h-16 rounded-2xl bg-[#4F8DF7] flex items-center justify-center border border-white/20 shadow-lg rotate-3 hover:rotate-0 transition-transform duration-300">
+                    <User className="h-8 w-8 text-white" />
                 </div>
                 <div>
-                    <h2 className="text-2xl font-bold text-primary font-headline">Welcome back, {user.name}!</h2>
-                    <div className="flex items-center gap-2 text-muted-foreground mt-1 text-sm font-medium">
-                        <Mail className="h-4 w-4" />
+                    <h2 className="text-3xl font-black text-[#000000] tracking-tight leading-none mb-2">Welcome back, {user.name}!</h2>
+                    <div className="flex items-center gap-2 text-[#1F2937] opacity-70 text-[13px] font-bold uppercase tracking-wider">
+                        <Mail className="h-4 w-4 text-[#4F8DF7]" />
                         {user.email}
                     </div>
                 </div>
             </div>
-            <div className="hidden sm:block">
-                <div className="text-right">
-                    <p className="text-sm font-medium text-muted-foreground">Account Status</p>
-                    <p className="text-emerald-500 font-bold flex items-center justify-end gap-1.5 mt-0.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        Active
+            <div className="hidden md:block">
+                <div className="bg-white/60 px-6 py-4 rounded-2xl border border-white/80 shadow-inner">
+                    <p className="text-[11px] font-black text-[#4F8DF7] uppercase tracking-[0.2em] mb-1">Sector Live Data</p>
+                    <p className="text-emerald-700 font-black flex items-center gap-2 text-sm uppercase tracking-tighter">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+                        Fully Synced
                     </p>
                 </div>
             </div>
