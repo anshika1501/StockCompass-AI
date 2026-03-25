@@ -2274,6 +2274,37 @@ def list_ollama_models(request):
 
 
 # ---------------------------------------------------------------------------
+# MPIN Verification
+# ---------------------------------------------------------------------------
+
+@api_view(['POST'])
+def verify_mpin(request):
+    """
+    POST /api/verify-mpin/
+    Verifies the current user's MPIN.
+    Accepts: { mpin: "1234" }
+    Returns: { valid: true/false }
+    """
+    user = get_user_from_request(request)
+    if not user:
+        return Response({"error": "Unauthorized"}, status=403)
+
+    mpin = str(request.data.get('mpin', '')).strip()
+    if not mpin:
+        return Response({"valid": False, "error": "MPIN is required."}, status=400)
+    if len(mpin) != 4 or not mpin.isdigit():
+        return Response({"valid": False, "error": "MPIN must be exactly 4 digits."}, status=400)
+
+    try:
+        from django.contrib.auth.hashers import check_password
+        profile = user.security_profile
+        valid = check_password(mpin, profile.mpin_hash)
+        return Response({"valid": valid})
+    except Exception:
+        return Response({"valid": False, "error": "No MPIN configured for this account."}, status=404)
+
+
+# ---------------------------------------------------------------------------
 # Sentiment Analysis API
 # ---------------------------------------------------------------------------
 
