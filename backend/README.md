@@ -79,12 +79,21 @@ Returns detailed stock price data for charts.
    ```
 
 
+
 7. **Initialize stock data and price history (NIFTY 500)**:
    ```bash
    python manage.py init_stocks --update-prices --period 1mo
    ```
 
    This will load all NIFTY 500 stocks from `backend/data/ind_nifty500list.csv`, fetch their info and price history, and populate the database.
+
+## Update Stock Prices
+
+To update stock prices for the past month, run:
+
+```bash
+python manage.py init_stocks --update-prices --period 1mo
+```
 
 8. **Start development server**:
    ```bash

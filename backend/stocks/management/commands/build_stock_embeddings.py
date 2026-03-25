@@ -41,6 +41,10 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        if not DEFAULT_EMBED_MODEL:
+            self.stdout.write(self.style.WARNING("Skipping: OLLAMA_EMBED_MODEL is not set; embeddings are optional and currently disabled."))
+            return
+
         client = OllamaClient()
 
         qs = Stock.objects.order_by('id')

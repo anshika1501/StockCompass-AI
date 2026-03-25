@@ -2271,3 +2271,195 @@ def list_ollama_models(request):
     except Exception as exc:
         logger.error("list_ollama_models error: %s", exc)
         return Response({'error': str(exc)}, status=500)
+
+
+# ---------------------------------------------------------------------------
+# Sentiment Analysis API
+# ---------------------------------------------------------------------------
+
+@api_view(['GET'])
+def sentiment_sector_list(request):
+    """
+    GET /api/sentiment/sectors/
+    Returns today's (or the latest available) snapshot for every sector.
+    """
+    from .models import SectorSentimentSnapshot
+    from django.utils import timezone
+
+    today = timezone.now().date()
+
+    # Prefer today; fall back to latest date per sector
+    snapshots = SectorSentimentSnapshot.objects.filter(date=today)
+    if not snapshots.exists():
+        # fallback: most-recent snapshot per sector
+        from django.db.models import Max
+        latest_dates = (
+            SectorSentimentSnapshot.objects
+            .values('sector')
+            .annotate(max_date=Max('date'))
+        )
+        from django.db.models import Q
+        q = Q()
+        for entry in latest_dates:
+            q |= Q(sector=entry['sector'], date=entry['max_date'])
+        snapshots = SectorSentimentSnapshot.objects.filter(q) if q else SectorSentimentSnapshot.objects.none()
+
+    data = [
+        {
+            'sector':        s.sector,
+            'slug':          s.sector.lower().replace(' ', '-').replace('&', 'and'),
+            'date':          s.date.isoformat(),
+            'label':         s.label,
+            'avg_score':     round(s.avg_score, 4),
+            'bullish_count': s.bullish_count,
+            'neutral_count': s.neutral_count,
+            'bearish_count': s.bearish_count,
+            'article_count': s.article_count,
+            'updated_at':    s.updated_at.isoformat(),
+        }
+        for s in snapshots
+    ]
+    data.sort(key=lambda x: x['avg_score'], reverse=True)
+    return Response(data)
+
+
+@api_view(['GET'])
+def sentiment_sector_detail(request, sector_slug):
+    """
+    GET /api/sentiment/sector/<sector_slug>/
+    Returns the snapshot + top stocks + recent articles for one sector.
+    """
+    from .models import SectorSentimentSnapshot, SentimentArticle, Stock
+    from django.utils import timezone
+    from django.db.models import Avg, Count, Max
+
+    today = timezone.now().date()
+
+    # Resolve slug → sector name
+    snapshots = SectorSentimentSnapshot.objects.all()
+    snapshot = None
+    for s in snapshots:
+        slug = s.sector.lower().replace(' ', '-').replace('&', 'and')
+        if slug == sector_slug.lower():
+            snapshot = s
+            break
+
+    if not snapshot:
+        return Response({'error': 'Sector not found or no data yet.'}, status=404)
+
+    sector = snapshot.sector
+
+    # Recent articles for this sector (latest 50)
+    articles_qs = SentimentArticle.objects.filter(sector=sector).order_by('-fetched_at')[:50]
+    articles = [
+        {
+            'id':            a.id,
+            'ticker':        a.ticker,
+            'company_name':  a.company_name,
+            'headline':      a.headline,
+            'snippet':       a.snippet,
+            'source':        a.source,
+            'url':           a.url,
+            'published_at':  a.published_at.isoformat() if a.published_at else None,
+            'compound_score': a.compound_score,
+            'label':          a.label,
+        }
+        for a in articles_qs
+    ]
+
+    # Per-stock aggregate in this sector (today)
+    stock_agg = (
+        SentimentArticle.objects
+        .filter(sector=sector, fetched_at__date=today)
+        .values('ticker', 'company_name')
+        .annotate(avg_score=Avg('compound_score'), count=Count('id'))
+        .order_by('-avg_score')[:20]
+    )
+    stocks = [
+        {
+            'ticker':       row['ticker'],
+            'company_name': row['company_name'],
+            'avg_score':    round(row['avg_score'], 4),
+            'article_count': row['count'],
+            'label':        'BULLISH' if row['avg_score'] >= 0.05 else ('BEARISH' if row['avg_score'] <= -0.05 else 'NEUTRAL'),
+        }
+        for row in stock_agg
+    ]
+
+    return Response({
+        'sector':   sector,
+        'snapshot': {
+            'date':          snapshot.date.isoformat(),
+            'label':         snapshot.label,
+            'avg_score':     round(snapshot.avg_score, 4),
+            'bullish_count': snapshot.bullish_count,
+            'neutral_count': snapshot.neutral_count,
+            'bearish_count': snapshot.bearish_count,
+            'article_count': snapshot.article_count,
+            'updated_at':    snapshot.updated_at.isoformat(),
+        },
+        'stocks':   stocks,
+        'articles': articles,
+    })
+
+
+@api_view(['GET'])
+def sentiment_stock_detail(request, ticker):
+    """
+    GET /api/sentiment/stock/<ticker>/
+    Returns sentiment score + recent articles for a single ticker.
+    """
+    from .models import SentimentArticle
+    from django.db.models import Avg, Count
+
+    ticker_upper = ticker.upper()
+    qs = SentimentArticle.objects.filter(ticker=ticker_upper).order_by('-fetched_at')[:30]
+    if not qs.exists():
+        return Response({'error': 'No sentiment data for this ticker yet.'}, status=404)
+
+    agg = qs.aggregate(avg=Avg('compound_score'), total=Count('id'))
+    avg_score = round(agg['avg'] or 0.0, 4)
+    label = 'BULLISH' if avg_score >= 0.05 else ('BEARISH' if avg_score <= -0.05 else 'NEUTRAL')
+
+    articles = [
+        {
+            'id':            a.id,
+            'headline':      a.headline,
+            'snippet':       a.snippet,
+            'source':        a.source,
+            'url':           a.url,
+            'published_at':  a.published_at.isoformat() if a.published_at else None,
+            'compound_score': a.compound_score,
+            'label':          a.label,
+        }
+        for a in qs
+    ]
+
+    return Response({
+        'ticker':        ticker_upper,
+        'avg_score':     avg_score,
+        'label':         label,
+        'article_count': agg['total'],
+        'articles':      articles,
+    })
+
+
+@api_view(['POST'])
+def sentiment_refresh(request):
+    """
+    POST /api/sentiment/refresh/
+    Trigger a fresh news fetch + scoring run.
+    Body (optional): { "sector": "...", "ticker": "..." }
+    Long-running — consider background tasks for production.
+    """
+    from .sentiment_service import SentimentService
+
+    sector = request.data.get('sector')
+    ticker = request.data.get('ticker')
+
+    try:
+        result = SentimentService.run(sector=sector, ticker=ticker)
+        return Response(result)
+    except Exception as exc:
+        logger.error("sentiment_refresh error: %s", exc)
+        return Response({'error': str(exc)}, status=500)

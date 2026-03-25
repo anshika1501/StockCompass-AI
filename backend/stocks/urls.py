@@ -64,4 +64,10 @@ urlpatterns = [
     path('portfolio/<int:id>/rename/', views.RenamePortfolioView.as_view(), name='rename-portfolio'),
     path('holding/add/', views.AddHoldingView.as_view(), name='add-holding'),
     path('holding/delete/<int:id>/', views.DeleteHoldingView.as_view(), name='delete-holding'),
+
+    # Sentiment Analysis
+    path('sentiment/sectors/',            views.sentiment_sector_list,   name='sentiment-sector-list'),
+    path('sentiment/sector/<slug:sector_slug>/', views.sentiment_sector_detail, name='sentiment-sector-detail'),
+    path('sentiment/stock/<str:ticker>/', views.sentiment_stock_detail,  name='sentiment-stock-detail'),
+    path('sentiment/refresh/',            views.sentiment_refresh,       name='sentiment-refresh'),
 ]

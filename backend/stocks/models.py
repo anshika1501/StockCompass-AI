@@ -182,3 +182,72 @@ class StockEmbedding(models.Model):
 
     def __str__(self):
         return f"Embedding for {self.stock.symbol}"
+
+
+# ---------------------------------------------------------------------------
+# Sentiment models
+# ---------------------------------------------------------------------------
+
+class SentimentArticle(models.Model):
+    """One news article with its VADER sentiment score."""
+
+    LABEL_CHOICES = [
+        ('BULLISH',  'Bullish'),
+        ('NEUTRAL',  'Neutral'),
+        ('BEARISH',  'Bearish'),
+    ]
+
+    SOURCE_CHOICES = [
+        ('yahoo_finance',    'Yahoo Finance'),
+        ('economic_times',   'Economic Times'),
+        ('money_control',    'MoneyControl'),
+    ]
+
+    ticker       = models.CharField(max_length=20, db_index=True)
+    company_name = models.CharField(max_length=255, blank=True, default='')
+    sector       = models.CharField(max_length=120, db_index=True)
+    headline     = models.TextField()
+    snippet      = models.TextField(blank=True, default='')
+    source       = models.CharField(max_length=30, choices=SOURCE_CHOICES, default='yahoo_finance')
+    url          = models.URLField(max_length=1000, blank=True, default='')
+    published_at = models.DateTimeField(null=True, blank=True)
+    compound_score = models.FloatField(default=0.0)
+    label        = models.CharField(max_length=10, choices=LABEL_CHOICES, default='NEUTRAL')
+    fetched_at   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-published_at', '-fetched_at']
+        indexes = [
+            models.Index(fields=['ticker', 'fetched_at']),
+            models.Index(fields=['sector', 'fetched_at']),
+        ]
+
+    def __str__(self):
+        return f"[{self.label}] {self.ticker} — {self.headline[:60]}"
+
+
+class SectorSentimentSnapshot(models.Model):
+    """Daily sentiment aggregate per sector."""
+
+    LABEL_CHOICES = [
+        ('BULLISH', 'Bullish'),
+        ('NEUTRAL', 'Neutral'),
+        ('BEARISH', 'Bearish'),
+    ]
+
+    sector         = models.CharField(max_length=120, db_index=True)
+    date           = models.DateField(db_index=True)
+    avg_score      = models.FloatField(default=0.0)
+    bullish_count  = models.IntegerField(default=0)
+    neutral_count  = models.IntegerField(default=0)
+    bearish_count  = models.IntegerField(default=0)
+    article_count  = models.IntegerField(default=0)
+    label          = models.CharField(max_length=10, choices=LABEL_CHOICES, default='NEUTRAL')
+    updated_at     = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('sector', 'date')
+        ordering = ['-date', 'sector']
+
+    def __str__(self):
+        return f"{self.sector} | {self.date} | {self.label} ({self.avg_score:.3f})"

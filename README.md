@@ -1,7 +1,15 @@
+# 📈 Update Stock Prices
+
+To update stock prices for the past month, run the following command in the backend directory:
+
+```bash
+python manage.py init_stocks --update-prices --period 1mo
+```
+
 # StockCompass
 [![LOC](https://badge.aiyu.co.in/repo-batch?owner=anshika1501&repo=StockCompass-AI&fields=loc)](https://github.com/anshika1501/StockCompass-AI)
 
-StockCompass is a comprehensive, AI-powered stock analysis platform featuring curated industry portfolios, stock clustering, and predictive trajectory forecasting using machine learning models.
+StockCompass is a comprehensive, AI-powered stock analysis platform featuring curated industry portfolios, stock clustering, and predictive trajectory forecasting using machine learning models. Your in-app assistant is **Anshi (StockCompass AI)**.
 
 ![StockCompass Preview](./preview.png)
 
@@ -205,7 +213,9 @@ POSTGRES_PORT=5432
 
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_CHAT_MODEL=tinyllama
-OLLAMA_EMBED_MODEL=qwen3-embedding:0.6b
+# Optional: set to an embedding model for vector search (e.g., qwen3-embedding:0.6b).
+# Leave blank to disable embeddings; Anshi will still answer using the chat model.
+OLLAMA_EMBED_MODEL=
 ```
 
 ---
@@ -288,7 +298,8 @@ The backend exposes the core API, handles stock data retrieval (via yfinance), a
    # Ollama defaults (local)
    OLLAMA_BASE_URL=http://localhost:11434
    OLLAMA_CHAT_MODEL=tinyllama
-   OLLAMA_EMBED_MODEL=qwen3-embedding:0.6b
+   # Optional: embedding model for similarity search (e.g., qwen3-embedding:0.6b). Leave blank to disable embeddings; Anshi will still chat.
+   OLLAMA_EMBED_MODEL=
    ```
 
 5. **Prepare PostgreSQL with pgvector**
@@ -329,7 +340,7 @@ The backend exposes the core API, handles stock data retrieval (via yfinance), a
    python manage.py migrate
    ```
 
-8. **Build vector embeddings (uses Ollama embed model):**
+8. **(Optional) Build vector embeddings (requires OLLAMA_EMBED_MODEL to be set):**
    ```bash
    python manage.py build_stock_embeddings --force
    ```
