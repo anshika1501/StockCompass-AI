@@ -396,18 +396,18 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                 <CardHeader className="bg-gray-50/50 border-b border-gray-100 px-8 py-6">
                     <div className="flex items-center justify-between">
                         <div>
-                            <CardTitle className="text-2xl font-black text-[#000000] tracking-tight flex items-center gap-3">
+                            <CardTitle className="text-2xl font-headline font-extrabold text-[#000000] tracking-tight flex items-center gap-3">
                                 <div className="bg-[#4F8DF7] p-2 rounded-xl shadow-lg shadow-[#4F8DF7]/15">
                                     <BrainCircuit size={20} className="text-white" />
                                 </div>
                                 Portfolio Analytics
                             </CardTitle>
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1.5 ml-11">Quantitative metrics and opportunity evaluation</p>
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-[0.12em] mt-1.5 ml-11">Quantitative metrics and opportunity evaluation</p>
                         </div>
                         {compareList.length > 0 && (
                             <button
                                 onClick={() => router.push('/compare')}
-                                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#4F8DF7] text-white text-[11px] font-black uppercase tracking-widest hover:bg-[#2563EB] transition-all shadow-lg shadow-[#4F8DF7]/20 active:scale-95"
+                                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#4F8DF7] text-white text-[11px] font-semibold uppercase tracking-[0.12em] hover:bg-[#2563EB] transition-all shadow-lg shadow-[#4F8DF7]/20 active:scale-95"
                             >
                                 <GitCompare size={15} />
                                 Compare Results ({compareList.length})
@@ -420,14 +420,14 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                         <table className="min-w-full divide-y divide-gray-100">
                             <thead>
                                 <tr className="bg-blue-50/30">
-                                    <th className="px-6 py-4 text-left text-[10px] font-black text-[#000000] uppercase tracking-[0.15em]">Symbol</th>
-                                    <th className="px-6 py-4 text-right text-[10px] font-black text-[#000000] uppercase tracking-[0.15em]">Market Price</th>
-                                    <th className="px-6 py-4 text-right text-[10px] font-black text-[#000000] uppercase tracking-[0.15em]">PE Range (Min/Max)</th>
-                                    <th className="px-6 py-4 text-right text-[10px] font-black text-[#000000] uppercase tracking-[0.15em]">Current PE</th>
-                                    <th className="px-6 py-4 text-right text-[10px] font-black text-[#000000] uppercase tracking-[0.15em]">Expected Value</th>
-                                    <th className="px-6 py-4 text-center text-[10px] font-black text-[#000000] uppercase tracking-[0.15em]">Signal</th>
-                                    <th className="px-6 py-4 text-center text-[10px] font-black text-[#000000] uppercase tracking-[0.15em]">Opp. Score</th>
-                                    <th className="px-6 py-4 text-center text-[10px] font-black text-[#000000] uppercase tracking-[0.15em]">Actions</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Symbol</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Market Price</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">PE Range (Min/Max)</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Current PE</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Expected Value</th>
+                                    <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Signal</th>
+                                    <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Opp. Score</th>
+                                    <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
@@ -435,30 +435,30 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                     <tr key={stock.symbol} className="hover:bg-blue-50/20 transition-colors group">
                                         <td className="px-6 py-5 whitespace-nowrap">
                                             <div className="flex flex-col">
-                                                <span className="font-black text-[#4F8DF7] text-sm tracking-tighter">{stock.symbol}</span>
-                                                <span className="text-[11px] font-bold text-gray-400 uppercase truncate max-w-[140px]">{stock.company_name}</span>
+                                                <span className="font-bold text-[#4F8DF7] text-sm tracking-tight">{stock.symbol}</span>
+                                                <span className="text-[11px] font-medium text-gray-500 uppercase truncate max-w-[140px]">{stock.company_name}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-5 text-right font-black text-[#000000] text-sm tracking-tighter">
+                                        <td className="px-6 py-5 text-right font-bold text-[#000000] text-sm tracking-tight">
                                             ₹{stock.current_price?.toLocaleString() ?? '-'}
                                         </td>
                                         <td className="px-6 py-5 text-right">
                                             <div className="flex flex-col items-end">
-                                                <span className="text-[11px] font-black text-emerald-600 tracking-tighter">{stock.pe_min != null ? stock.pe_min.toFixed(2) : '-'}</span>
-                                                <span className="text-[11px] font-black text-rose-600 tracking-tighter">{stock.pe_max != null ? stock.pe_max.toFixed(2) : '-'}</span>
+                                                <span className="text-[11px] font-semibold text-emerald-600 tracking-tight">{stock.pe_min != null ? stock.pe_min.toFixed(2) : '-'}</span>
+                                                <span className="text-[11px] font-semibold text-rose-600 tracking-tight">{stock.pe_max != null ? stock.pe_max.toFixed(2) : '-'}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-5 text-right font-black text-[#000000] text-sm tracking-tighter">
+                                        <td className="px-6 py-5 text-right font-bold text-[#000000] text-sm tracking-tight">
                                             {stock.pe_ratio != null ? stock.pe_ratio.toFixed(2) : '-'}
                                         </td>
                                         <td className="px-6 py-5 text-right">
-                                            <span className="font-black text-[#000000] text-sm tracking-tighter">
+                                            <span className="font-bold text-[#000000] text-sm tracking-tight">
                                                 {stock.expected_price != null ? `₹${stock.expected_price.toLocaleString()}` : '-'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-5 text-center">
                                             <span className={cn(
-                                                'inline-block px-3 py-1.5 rounded-lg text-[10px] font-black tracking-[0.1em] uppercase border shadow-sm',
+                                                'inline-block px-3 py-1.5 rounded-lg text-[10px] font-semibold tracking-[0.1em] uppercase border shadow-sm',
                                                 stock.recommendation === 'BUY' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
                                                     stock.recommendation === 'SELL' ? 'bg-rose-50 text-rose-700 border-rose-100' :
                                                         'bg-amber-50 text-amber-700 border-amber-100',
@@ -467,7 +467,7 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                             </span>
                                         </td>
                                         <td className="px-6 py-5 text-center">
-                                            <div className="inline-flex items-center justify-center min-w-[54px] px-2.5 py-1.5 rounded-xl bg-blue-50 border border-blue-100 text-[#4F8DF7] text-[13px] font-black shadow-inner">
+                                            <div className="inline-flex items-center justify-center min-w-[54px] px-2.5 py-1.5 rounded-xl bg-blue-50 border border-blue-100 text-[#4F8DF7] text-[13px] font-semibold shadow-inner">
                                                 {stock.opportunity_score ?? '-'}
                                             </div>
                                         </td>
@@ -481,7 +481,7 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                                     }
                                                 }}
                                                 className={cn(
-                                                    'flex items-center gap-2 text-[10px] font-black px-4 py-2 rounded-xl transition-all mx-auto uppercase tracking-widest border',
+                                                    'flex items-center gap-2 text-[10px] font-semibold px-4 py-2 rounded-xl transition-all mx-auto uppercase tracking-[0.12em] border',
                                                     isInCompare(stock.symbol)
                                                         ? 'text-white bg-[#4F8DF7] border-[#4F8DF7] shadow-lg shadow-[#4F8DF7]/20'
                                                         : 'text-gray-400 border-gray-100 bg-white hover:border-[#4F8DF7] hover:text-[#4F8DF7] shadow-sm'
@@ -506,25 +506,25 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                 <CardHeader className="bg-blue-50/20 border-b border-blue-100/50 px-8 py-6">
                     <div className="flex flex-wrap items-center justify-between gap-6">
                         <div>
-                            <CardTitle className="text-2xl font-black text-[#000000] tracking-tight flex items-center gap-3">
+                            <CardTitle className="text-2xl font-headline font-extrabold text-[#000000] tracking-tight flex items-center gap-3">
                                 <div className="bg-[#4F8DF7] p-2 rounded-xl">
                                     <Layers size={20} className="text-white" />
                                 </div>
                                 Cluster Topography
                             </CardTitle>
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1.5 ml-11">
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-[0.12em] mt-1.5 ml-11">
                                 K-Means algorithm (K={clusterK}) evaluation via multidimensional feature-pair subspace.
                             </p>
                         </div>
                         <div className="flex items-center gap-4 bg-white p-2 rounded-2xl border border-gray-100 shadow-inner">
-                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Cluster Count (K)</span>
+                            <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-[0.12em] px-2">Cluster Count (K)</span>
                             <div className="flex gap-1">
                                 {[2, 3, 4, 5].map(k => (
                                     <button
                                         key={k}
                                         onClick={() => setClusterK(k)}
                                         className={cn(
-                                            "w-10 h-10 rounded-xl text-xs font-black transition-all border",
+                                            "w-10 h-10 rounded-xl text-xs font-semibold transition-all border",
                                             clusterK === k
                                                 ? "bg-[#4F8DF7] text-white border-[#4F8DF7] shadow-md shadow-[#4F8DF7]/20"
                                                 : "bg-white border-transparent text-gray-400 hover:text-[#4F8DF7] hover:bg-blue-50"
@@ -564,15 +564,15 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                         <div className="bg-amber-100 p-1.5 rounded-lg shadow-sm">
                                             <Star size={15} className="text-amber-500 fill-amber-500" />
                                         </div>
-                                        <span className="text-[10px] font-black text-[#000000] uppercase tracking-[0.2em]">Optimal Partition</span>
+                                        <span className="text-[10px] font-semibold text-[#000000] uppercase tracking-[0.14em]">Optimal Partition</span>
                                     </div>
-                                    <p className="text-2xl font-black text-[#000000] tracking-tighter leading-tight mb-2">{bestPair.pair.xLabel} vs {bestPair.pair.yLabel}</p>
+                                    <p className="text-2xl font-headline font-extrabold text-[#000000] tracking-tight leading-tight mb-2">{bestPair.pair.xLabel} vs {bestPair.pair.yLabel}</p>
                                     <div className="flex items-end gap-3 py-4">
                                         <span className="text-5xl font-black text-[#4F8DF7] tracking-tighter leading-none">{bestPair.silhouette.toFixed(3)}</span>
-                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 leading-none shadow-sm bg-white px-2 py-1 rounded-md">Silhouette Score</span>
+                                        <span className="text-[10px] font-medium text-gray-500 uppercase tracking-[0.12em] mb-1.5 leading-none shadow-sm bg-white px-2 py-1 rounded-md">Silhouette Score</span>
                                     </div>
                                     <span className={cn(
-                                        "text-[10px] font-black px-3 py-1.5 rounded-lg inline-block shadow-sm border uppercase tracking-widest",
+                                        "text-[10px] font-semibold px-3 py-1.5 rounded-lg inline-block shadow-sm border uppercase tracking-[0.12em]",
                                         bestPair.silhouette > 0.5 ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
                                             bestPair.silhouette > 0.25 ? "bg-amber-50 text-amber-700 border-amber-100" :
                                                 "bg-gray-50 text-gray-400 border-gray-100"
@@ -598,7 +598,7 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
 
                                 {/* Cluster membership */}
                                 <div>
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Sub-Group Membership</p>
+                                    <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-[0.12em] mb-4 px-1">Sub-Group Membership</p>
                                     <div className="space-y-4">
                                         {Array.from({ length: clusterK }, (_, ci) => {
                                             const pts = bestPair.points.filter(p => p.cluster === ci);
@@ -607,14 +607,14 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                                 <div key={ci} className="bg-white/60 p-4 rounded-2xl border border-white/80 shadow-sm">
                                                     <div className="flex items-center gap-2 mb-3">
                                                         <span className="w-3 h-3 rounded-full shrink-0 shadow-sm" style={{ background: CLUSTER_COLORS[ci] }} />
-                                                        <span className="text-[11px] font-black text-[#000000] uppercase tracking-wider">{CLUSTER_NAMES[ci]} Core</span>
-                                                        <Badge variant="secondary" className="ml-auto text-[10px] font-black bg-gray-50 text-gray-500 border border-gray-100 rounded-md py-0">{pts.length} Assets</Badge>
+                                                        <span className="text-[11px] font-semibold text-[#000000] uppercase tracking-[0.1em]">{CLUSTER_NAMES[ci]} Core</span>
+                                                        <Badge variant="secondary" className="ml-auto text-[10px] font-semibold bg-gray-50 text-gray-500 border border-gray-100 rounded-md py-0">{pts.length} Assets</Badge>
                                                     </div>
                                                     <div className="flex flex-wrap gap-1.5 pl-2">
                                                         {pts.slice(0, 10).map(p => (
-                                                            <span key={p.symbol} className="text-[10px] px-2 py-1 rounded-lg bg-white border border-gray-50 font-black text-[#4F8DF7] shadow-sm">{p.symbol}</span>
+                                                            <span key={p.symbol} className="text-[10px] px-2 py-1 rounded-lg bg-white border border-gray-50 font-semibold text-[#4F8DF7] shadow-sm">{p.symbol}</span>
                                                         ))}
-                                                        {pts.length > 10 && <span className="text-[9px] font-black text-gray-400 py-1 uppercase tracking-widest">+{pts.length - 10}</span>}
+                                                        {pts.length > 10 && <span className="text-[9px] font-semibold text-gray-500 py-1 uppercase tracking-[0.12em]">+{pts.length - 10}</span>}
                                                     </div>
                                                 </div>
                                             );
@@ -630,13 +630,13 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
             {/* ── Correlation Matrix ───────────────────────────────────── */}
             <Card className="border border-gray-200 shadow-sm bg-white rounded-3xl overflow-hidden mb-12">
                 <CardHeader className="bg-gray-50/50 border-b border-gray-100 px-8 py-6">
-                    <CardTitle className="text-2xl font-black text-[#000000] tracking-tight flex items-center gap-3">
+                    <CardTitle className="text-2xl font-headline font-extrabold text-[#000000] tracking-tight flex items-center gap-3">
                         <div className="bg-[#4F8DF7] p-2 rounded-xl">
                             <BrainCircuit size={20} className="text-white" />
                         </div>
                         Covariance Statistics
                     </CardTitle>
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1.5 ml-11">Real-time feature relationship & heat-dependency matrix</p>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-[0.12em] mt-1.5 ml-11">Real-time feature relationship & heat-dependency matrix</p>
                 </CardHeader>
                 <CardContent className="p-8">
                     <div className="overflow-x-auto w-full rounded-2xl border border-gray-100 shadow-inner bg-gray-50/20">
@@ -644,9 +644,9 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                             <table className="w-full text-xs text-center border-collapse">
                                 <thead>
                                     <tr className="bg-blue-50/30">
-                                        <th className="p-4 border-b border-r border-gray-100 text-left font-black text-[#000000] uppercase tracking-widest bg-white">Feature Subspace</th>
+                                        <th className="p-4 border-b border-r border-gray-100 text-left font-semibold text-[#000000] uppercase tracking-[0.12em] bg-white">Feature Subspace</th>
                                         {corrKeys.map(k => (
-                                            <th key={k} className="p-4 border-b border-gray-100 font-black text-[#000000] uppercase tracking-tighter whitespace-nowrap bg-blue-50/10" title={k}>
+                                            <th key={k} className="p-4 border-b border-gray-100 font-semibold text-[#000000] uppercase tracking-[0.08em] whitespace-nowrap bg-blue-50/10" title={k}>
                                                 {k.length > 12 ? k.substring(0, 12) + '...' : k}
                                             </th>
                                         ))}
@@ -655,7 +655,7 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                 <tbody>
                                     {corrKeys.map(rowKey => (
                                         <tr key={rowKey}>
-                                            <td className="p-4 border-r border-gray-100 text-left font-black text-gray-500 uppercase tracking-tighter whitespace-nowrap bg-white" title={rowKey}>
+                                            <td className="p-4 border-r border-gray-100 text-left font-semibold text-gray-500 uppercase tracking-[0.08em] whitespace-nowrap bg-white" title={rowKey}>
                                                 {rowKey.length > 14 ? rowKey.substring(0, 14) + '...' : rowKey}
                                             </td>
                                             {corrKeys.map(colKey => {
@@ -674,7 +674,7 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                                 return (
                                                     <td
                                                         key={colKey}
-                                                        className="p-4 border-b border-r border-gray-100 text-[11px] font-black tabular-nums transition-colors duration-200"
+                                                        className="p-4 border-b border-r border-gray-100 text-[11px] font-semibold tabular-nums transition-colors duration-200"
                                                         style={{ backgroundColor: bgColor, color: textColor }}
                                                         title={`${rowKey} vs ${colKey}: ${val.toFixed(4)}`}
                                                     >
@@ -687,7 +687,7 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                 </tbody>
                             </table>
                         ) : (
-                            <div className="p-20 text-center text-gray-400 font-black uppercase tracking-[0.2em] text-sm">Covariance synchronization data unavailable.</div>
+                            <div className="p-20 text-center text-gray-500 font-semibold uppercase tracking-[0.12em] text-sm">Covariance synchronization data unavailable.</div>
                         )}
                     </div>
                 </CardContent>

@@ -19,7 +19,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { SidebarMenuItem, type SidebarItem } from "./SidebarMenuItem";
 
 const mainItems: SidebarItem[] = [
-  { label: "Dashboard", href: "/portfolios", icon: LayoutDashboard },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Portfolio", href: "/my-portfolio", icon: Wallet },
 ];
 
@@ -41,7 +41,7 @@ export default function SidebarNav({ onNavigate }: { onNavigate?: () => void }) 
   return (
     <aside className="flex h-full w-full flex-col bg-slate-950 text-slate-100">
       <div className="border-b border-slate-800 px-5 py-5">
-        <Link href="/portfolios" onClick={onNavigate} className="group flex items-center gap-3">
+        <Link href="/dashboard" onClick={onNavigate} className="group flex items-center gap-3">
           <div className="rounded-lg bg-blue-500/20 p-2 ring-1 ring-blue-400/30 transition-colors group-hover:bg-blue-500/30">
             <CandlestickChart className="h-5 w-5 text-blue-300" />
           </div>

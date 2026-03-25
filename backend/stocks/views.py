@@ -5,7 +5,7 @@ from django.db.models import Q
 from django.core.cache import cache
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from .models import StockCategory, Stock, Portfolio, Holding
+from .models import StockCategory, Stock, Portfolio, Holding, UserSecurityProfile
 from .serializers import PortfolioSerializer, HoldingSerializer
 from .services import StockDataService
 from .chatbot import ChatAdvisorService, OllamaClient, DEFAULT_CHAT_MODEL, DEFAULT_EMBED_MODEL, DEFAULT_OLLAMA_BASE
@@ -1792,26 +1792,35 @@ def register_user(request):
     """
     POST /api/register/
     Registers a new user in the Django User model.
-    Accepts: { email, password, name(optional) }
+    Accepts: { email, password, name(optional), mpin }
     """
     from django.contrib.auth.models import User
-    from django.db import IntegrityError
+    from django.contrib.auth.hashers import make_password
+    from django.db import IntegrityError, transaction
     
     email = request.data.get('email')
     password = request.data.get('password')
     name = request.data.get('name', '')
+    mpin = str(request.data.get('mpin', '')).strip()
     
-    if not email or not password:
-        return Response({'error': 'Email and Password are required.'}, status=400)
+    if not email or not password or not mpin:
+        return Response({'error': 'Email, password, and MPIN are required.'}, status=400)
+    if len(mpin) != 4 or not mpin.isdigit():
+        return Response({'error': 'MPIN must be exactly 4 digits.'}, status=400)
     
     try:
         if User.objects.filter(username=email).exists():
             return Response({'error': 'An account with this email already exists.'}, status=400)
             
-        user = User.objects.create_user(username=email, email=email, password=password)
-        if name:
-            user.first_name = name
-            user.save()
+        with transaction.atomic():
+            user = User.objects.create_user(username=email, email=email, password=password)
+            if name:
+                user.first_name = name
+                user.save()
+            UserSecurityProfile.objects.create(
+                user=user,
+                mpin_hash=make_password(mpin),
+            )
             
         return Response({
             'message': 'Registration successful.',

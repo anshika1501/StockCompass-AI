@@ -31,7 +31,7 @@ export default async function SectorPage({ params }: { params: { sector: string 
       <Navigation />
 
       <main className="container mx-auto px-6 lg:px-12 mt-12 pb-24">
-        <Link href="/portfolios" className="inline-flex items-center text-sm font-black text-[#1F2937] hover:text-[#4F8DF7] mb-10 transition-all group uppercase tracking-widest">
+        <Link href="/portfolios" className="inline-flex items-center text-sm font-semibold text-[#1F2937] hover:text-[#4F8DF7] mb-10 transition-all group uppercase tracking-[0.12em]">
           <ChevronLeft className="h-5 w-5 mr-2 group-hover:-translate-x-1 transition-transform" />
           Market Sectors
         </Link>
@@ -39,16 +39,16 @@ export default async function SectorPage({ params }: { params: { sector: string 
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-10">
           <div className="max-w-2xl">
             <div className="flex flex-col gap-3 mb-4">
-              <span className="text-[11px] font-black uppercase tracking-[0.2em] text-[#4F8DF7] bg-blue-50 border border-blue-100 px-3 py-1 rounded-lg w-fit shadow-sm">Industry Analysis</span>
-              <h1 className="text-5xl font-black font-headline text-[#000000] tracking-tighter leading-none">{sector.name}</h1>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#4F8DF7] bg-blue-50 border border-blue-100 px-3 py-1 rounded-lg w-fit shadow-sm">Industry Analysis</span>
+              <h1 className="text-5xl font-headline font-extrabold text-[#000000] tracking-tight leading-none">{sector.name}</h1>
             </div>
-            <p className="text-xl text-[#1F2937] font-medium opacity-80 leading-relaxed">{sector.description}</p>
+            <p className="text-xl text-[#1F2937] font-normal opacity-85 leading-relaxed">{sector.description}</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="lg" className="gap-2 bg-white border-gray-200 text-[#000000] font-black text-xs uppercase tracking-widest hover:bg-gray-50 rounded-xl px-6 h-12 shadow-sm">
+            <Button variant="outline" size="lg" className="gap-2 bg-white border-gray-200 text-[#000000] font-semibold text-xs uppercase tracking-[0.12em] hover:bg-gray-50 rounded-xl px-6 h-12 shadow-sm">
               <Filter className="h-4 w-4" /> Refine
             </Button>
-            <Button variant="outline" size="lg" className="gap-2 bg-white border-gray-200 text-[#000000] font-black text-xs uppercase tracking-widest hover:bg-gray-50 rounded-xl px-6 h-12 shadow-sm">
+            <Button variant="outline" size="lg" className="gap-2 bg-white border-gray-200 text-[#000000] font-semibold text-xs uppercase tracking-[0.12em] hover:bg-gray-50 rounded-xl px-6 h-12 shadow-sm">
               <LayoutGrid className="h-4 w-4" /> Layout
             </Button>
           </div>
@@ -62,7 +62,7 @@ export default async function SectorPage({ params }: { params: { sector: string 
 
         {stocks.length === 0 && (
           <div className="text-center py-32 bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200">
-            <p className="text-[#1F2937] font-black uppercase tracking-widest text-sm opacity-40">No assets detected in this sector.</p>
+            <p className="text-[#1F2937] font-semibold uppercase tracking-[0.12em] text-sm opacity-50">No assets detected in this sector.</p>
           </div>
         )}
 

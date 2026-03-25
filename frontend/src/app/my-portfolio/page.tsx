@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Plus,
   Trash2,
@@ -41,6 +41,9 @@ function inputClass() {
 
 export default function MyPortfolioPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const addTickerParam = searchParams.get("addTicker");
+
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<number | null>(null);
@@ -67,6 +70,10 @@ export default function MyPortfolioPage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const createNameRef = useRef<HTMLInputElement>(null);
+  const addTickerInputRef = useRef<HTMLInputElement>(null);
+  const addHoldingSectionRef = useRef<HTMLDivElement>(null);
+  const didPrefillRef = useRef(false);
+  const suppressSuggestionsRef = useRef(false);
 
   const [editingPortfolioId, setEditingPortfolioId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
@@ -102,7 +109,8 @@ export default function MyPortfolioPage() {
       try {
         const results = await searchLiveStocks(newHolding.ticker);
         setTickerSuggestions(results);
-        if (results.length > 0) setShowSuggestions(true);
+        if (!suppressSuggestionsRef.current && results.length > 0) setShowSuggestions(true);
+        else setShowSuggestions(false);
       } catch (err) {
         console.error("Search failed", err);
       } finally {
@@ -111,6 +119,49 @@ export default function MyPortfolioPage() {
     }, 500);
     return () => clearTimeout(timer);
   }, [newHolding.ticker]);
+
+  // If user clicked a stock -> open My Portfolio and prefill Add Holding.
+  useEffect(() => {
+    if (!addTickerParam) return;
+    if (isLoggedIn !== true) return;
+    if (didPrefillRef.current) return;
+    // Wait until portfolio list is loaded so we can safely select one.
+    if (portfolios.length === 0) return;
+
+    didPrefillRef.current = true;
+
+    const run = async () => {
+      const ticker = addTickerParam.trim().toUpperCase();
+      suppressSuggestionsRef.current = true;
+      try {
+        const results = await searchLiveStocks(ticker);
+        const match = results.find((r) => r.symbol.toUpperCase() === ticker) || results[0];
+
+        setNewHolding((prev) => ({
+          ...prev,
+          ticker: match?.symbol ?? ticker,
+          company_name: match?.company_name ?? "",
+          buy_price: match?.current_price ?? 0,
+          quantity: prev.quantity || 1,
+        }));
+
+        setSelectedPortfolioId((prev) => prev ?? portfolios[0]?.id ?? null);
+
+        setShowSuggestions(false);
+        setTickerSuggestions([]);
+
+        addHoldingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        requestAnimationFrame(() => addTickerInputRef.current?.focus());
+      } finally {
+        // allow the user to use the dropdown after the prefill completes
+        setTimeout(() => {
+          suppressSuggestionsRef.current = false;
+        }, 600);
+      }
+    };
+
+    void run();
+  }, [addTickerParam, isLoggedIn, portfolios]);
 
   const fetchPortfolios = async () => {
     setLoading(true);
@@ -137,8 +188,13 @@ export default function MyPortfolioPage() {
         newPortfolioName.trim(),
         newPortfolioDescription.trim()
       );
+      // Optimistically show it immediately...
       setPortfolios((prev) => [...prev, created]);
       setSelectedPortfolioId(created.id);
+      // ...and also refresh from backend to guarantee correctness.
+      await fetchPortfolios();
+      setSuccessMessage("Portfolio created.");
+      setTimeout(() => setSuccessMessage(null), 3000);
       setNewPortfolioName("");
       setNewPortfolioDescription("");
       setEditingPortfolioId(null);
@@ -302,17 +358,17 @@ export default function MyPortfolioPage() {
   const totalHoldings = selectedPortfolio?.holdings.length ?? 0;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 text-slate-900">
+        <div className="mx-auto max-w-6xl space-y-8 text-slate-900">
         {/* Header */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+            <h1 className="flex items-center gap-3 text-2xl font-headline font-extrabold tracking-tight text-slate-900 sm:text-3xl">
               <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-[#4F8DF7] ring-1 ring-blue-100">
                 <BriefcaseBusiness className="h-6 w-6" />
               </span>
               Portfolios
             </h1>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm font-medium text-slate-600">
               Create books, edit metadata, and manage positions in one place.
             </p>
           </div>
@@ -350,15 +406,15 @@ export default function MyPortfolioPage() {
 
         {/* Create portfolio */}
         <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:p-7">
-          <h2 className="text-lg font-semibold text-slate-900">Create portfolio</h2>
-          <p className="mt-1 text-sm text-slate-600">
+          <h2 className="text-lg font-headline font-extrabold text-slate-900">Create portfolio</h2>
+          <p className="mt-1 text-sm font-medium text-slate-600">
             Name your book and add an optional note. You can edit both later.
           </p>
 
           <form onSubmit={handleCreatePortfolio} className="mt-5 space-y-4">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
               <div className="flex-1 space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <label className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                   Portfolio name
                 </label>
                 <input
@@ -371,7 +427,7 @@ export default function MyPortfolioPage() {
                 />
               </div>
               <div className="flex-1 space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <label className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                   Description (optional)
                 </label>
                 <input
@@ -393,7 +449,7 @@ export default function MyPortfolioPage() {
             </div>
 
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                 Suggestions
               </p>
               <div className="flex flex-wrap gap-2">
@@ -567,7 +623,10 @@ export default function MyPortfolioPage() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:p-6">
+                <div
+                  ref={addHoldingSectionRef}
+                  className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:p-6"
+                >
                   <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-900">
                     <Plus className="h-4 w-4 text-[#4F8DF7]" />
                     Add holding — {selectedPortfolio.name}
@@ -575,6 +634,7 @@ export default function MyPortfolioPage() {
                   <form onSubmit={handleAddHolding} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div className="relative sm:col-span-1" ref={suggestionsRef}>
                       <input
+                        ref={addTickerInputRef}
                         type="text"
                         placeholder="Ticker (e.g. RELIANCE)"
                         required

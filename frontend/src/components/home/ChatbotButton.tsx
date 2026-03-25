@@ -23,27 +23,29 @@ export default function ChatbotButton() {
     }
   }, [messages, isOpen, loading]);
 
-  const send = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    const q = query.trim();
-    if (!q || loading) return;
-    setQuery("");
-    setMessages((m) => [...m, { role: "user", content: q }]);
+  const sendQuestion = async (q: string) => {
+    const trimmed = q.trim();
+    if (!trimmed || loading) return;
+    setMessages((m) => [...m, { role: "user", content: trimmed }]);
     setLoading(true);
     try {
       await new Promise((r) => setTimeout(r, 150));
-      setMessages((m) => [...m, { role: "bot", content: getHelpResponse(q) }]);
+      setMessages((m) => [...m, { role: "bot", content: getHelpResponse(trimmed) }]);
     } finally {
       setLoading(false);
     }
   };
 
+  const send = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const q = query.trim();
+    if (!q || loading) return;
+    setQuery("");
+    await sendQuestion(q);
+  };
+
   const applySuggestion = (text: string) => {
-    setQuery(text);
-    requestAnimationFrame(() => {
-      const input = document.getElementById("landing-help-input");
-      input?.focus();
-    });
+    void sendQuestion(text);
   };
 
   return (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { MessageCircle, X, Send, Loader2, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getHelpResponse } from "@/lib/help-assistant";
@@ -20,6 +21,7 @@ export default function ChatFab() {
     { role: "bot", content: HELP_INTRO_MESSAGE },
   ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -30,6 +32,13 @@ export default function ChatFab() {
       setTimeout(scrollToBottom, 100);
     }
   }, [messages, open]);
+
+  // If user navigates to the full chatbot page, hide this floating help panel.
+  useEffect(() => {
+    if (pathname?.startsWith("/chatbot")) {
+      setOpen(false);
+    }
+  }, [pathname]);
 
   const handleSend = async (e?: React.FormEvent) => {
     e?.preventDefault();

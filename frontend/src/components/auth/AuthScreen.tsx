@@ -33,6 +33,7 @@ export function AuthScreen({ emphasizeRegister = false }: AuthScreenProps) {
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
+  const [regMpin, setRegMpin] = useState("");
   const [error, setError] = useState("");
   const [regError, setRegError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -86,6 +87,7 @@ export function AuthScreen({ emphasizeRegister = false }: AuthScreenProps) {
               email: loginEmail,
               password: loginPassword,
               name: "Demo User",
+              mpin: "1234",
             }),
           });
         } catch {
@@ -121,8 +123,12 @@ export function AuthScreen({ emphasizeRegister = false }: AuthScreenProps) {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regEmail || !regPassword) {
-      setRegError("Email and password are required.");
+    if (!regEmail || !regPassword || !regMpin) {
+      setRegError("Email, password, and MPIN are required.");
+      return;
+    }
+    if (!/^\d{4}$/.test(regMpin)) {
+      setRegError("MPIN must be exactly 4 digits.");
       return;
     }
 
@@ -137,6 +143,7 @@ export function AuthScreen({ emphasizeRegister = false }: AuthScreenProps) {
           email: regEmail,
           password: regPassword,
           name: regName,
+          mpin: regMpin,
         }),
       });
 
@@ -361,6 +368,27 @@ export function AuthScreen({ emphasizeRegister = false }: AuthScreenProps) {
                     placeholder="••••••••"
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  MPIN
+                </label>
+                <div className="relative">
+                  <Lock
+                    className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+                    aria-hidden
+                  />
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="4-digit MPIN"
+                    value={regMpin}
+                    onChange={(e) => setRegMpin(e.target.value.replace(/\D/g, "").slice(0, 4))}
                     className={inputClass}
                   />
                 </div>

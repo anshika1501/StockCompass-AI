@@ -18,6 +18,20 @@ class Portfolio(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.name}"
 
+
+class UserSecurityProfile(models.Model):
+    """Security metadata for a user account."""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='security_profile')
+    mpin_hash = models.CharField(max_length=128)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['user_id']
+
+    def __str__(self):
+        return f"Security profile for {self.user.username}"
+
 class Holding(models.Model):
     """A stock holding within a user's portfolio."""
     portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name='holdings')
