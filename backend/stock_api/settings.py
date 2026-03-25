@@ -152,19 +152,7 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings
-DEFAULT_CORS_ORIGINS = [
-    'https://stockcompass.anshikapriya.online',
-]
-
-_cors_env = os.environ.get('CORS_ALLOWED_ORIGINS', '')
-CORS_ALLOWED_ORIGINS = [
-    origin.strip() for origin in _cors_env.split(',') if origin.strip()
-]
-
-if not CORS_ALLOWED_ORIGINS:
-    CORS_ALLOWED_ORIGINS = DEFAULT_CORS_ORIGINS
-
-CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False').lower() in ('true', '1', 'yes')
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 _csrf_env = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
