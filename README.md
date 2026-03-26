@@ -457,3 +457,88 @@ sequenceDiagram
     %% Render
     Frontend-->>User: Render interactive Recharts.js Trajectory Graph
 ```
+
+---
+
+## 🗺️ Full Project Sequence Diagram
+
+The diagram below covers **all major flows** across StockCompass — authentication, stock charts, AI chatbot (RAG), and portfolio management:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Frontend as Next.js Frontend
+    participant Django as Django Backend
+    participant DB as PostgreSQL + pgvector
+    participant YF as yfinance API
+    participant Ollama as Ollama LLM (tinyllama)
+
+    %% ─── 1. AUTHENTICATION FLOW ───
+    rect rgb(230, 240, 255)
+        Note over User,Django: 1️⃣ Authentication
+        User->>Frontend: Enter credentials → /login
+        Frontend->>Django: POST /api/login/
+        Django->>DB: Validate user credentials
+        DB-->>Django: User record + hashed password
+        Django-->>Frontend: Auth Token + User Info
+        Frontend-->>User: Redirect → Dashboard
+    end
+
+    %% ─── 2. STOCK CHART FLOW ───
+    rect rgb(230, 255, 240)
+        Note over User,YF: 2️⃣ Stock Price Chart
+        User->>Frontend: Open stock page (e.g. /stock/TCS)
+        Frontend->>Django: GET /api/stocks/TCS/chart/?period=1mo
+        Django->>YF: Fetch historical OHLCV data (period=1mo)
+        YF-->>Django: Return date + close price array
+        Django-->>Frontend: JSON [ {date, price}, … ]
+        Frontend-->>User: Render Area Line Chart (Recharts)
+        User->>Frontend: Click "1Y" range button
+        Frontend->>Django: GET /api/stocks/TCS/chart/?period=1y
+        Django->>YF: Fetch 1-year historical data
+        YF-->>Django: Return 1-year price history
+        Django-->>Frontend: JSON [ {date, price}, … ]
+        Frontend-->>User: Chart re-renders with new range
+    end
+
+    %% ─── 3. AI CHATBOT (RAG) FLOW ───
+    rect rgb(255, 245, 220)
+        Note over User,Ollama: 3️⃣ AI Chatbot — Anshi (RAG Pipeline)
+        User->>Frontend: Type question in chatbot (e.g. "Is TCS a good buy?")
+        Frontend->>Django: POST /api/chatbot/ask/ {question}
+        Django->>Ollama: Embed question → vector (embed model)
+        Ollama-->>Django: Query embedding [ float, float, … ]
+        Django->>DB: Cosine similarity search (pgvector) → top 6 stocks
+        DB-->>Django: Nearest StockEmbedding records
+        Django->>DB: Fetch stock metadata (price, PE, 52w range, sector)
+        DB-->>Django: Stock details
+        Note over Django: Compute risk (Low/Medium/High) per stock
+        Note over Django: Build structured context string
+        Django->>Ollama: POST /api/chat {system prompt + context + question}
+        Ollama-->>Django: Generated answer text
+        Django-->>Frontend: { answer, sources: [{symbol, name, sector, distance}] }
+        Frontend-->>User: Display AI answer + source stock chips
+    end
+
+    %% ─── 4. PORTFOLIO MANAGEMENT FLOW ───
+    rect rgb(245, 230, 255)
+        Note over User,DB: 4️⃣ Portfolio Management
+        User->>Frontend: Create new portfolio → /my-portfolio
+        Frontend->>Django: POST /api/portfolios/ {name, description}
+        Django->>DB: Insert portfolio record (owned by user)
+        DB-->>Django: Portfolio created
+        Django-->>Frontend: Portfolio object
+        User->>Frontend: Add stock to portfolio
+        Frontend->>Django: POST /api/portfolios/{id}/stocks/ {ticker, quantity, buy_price}
+        Django->>DB: Insert holding record
+        DB-->>Django: Updated portfolio
+        Django-->>Frontend: Success response
+        Frontend-->>User: Portfolio updated with new holding
+        User->>Frontend: Delete stock from portfolio
+        Frontend->>Django: DELETE /api/portfolios/{id}/stocks/{stockId}/
+        Django->>DB: Remove holding record
+        DB-->>Django: Confirmed deletion
+        Django-->>Frontend: 204 No Content
+        Frontend-->>User: Stock removed, UI refreshes
+    end
+```
