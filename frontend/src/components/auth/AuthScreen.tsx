@@ -113,7 +113,7 @@ export function AuthScreen({ emphasizeRegister = false }: AuthScreenProps) {
         window.dispatchEvent(new Event("auth_change"));
       }
 
-      router.push("/portfolios");
+      router.push("/dashboard");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Sign in failed");
     } finally {
