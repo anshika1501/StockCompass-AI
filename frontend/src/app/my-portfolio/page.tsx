@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Plus,
@@ -39,7 +39,7 @@ function inputClass() {
   return "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-[#4F8DF7] focus:outline-none focus:ring-2 focus:ring-[#4F8DF7]/25";
 }
 
-export default function MyPortfolioPage() {
+function MyPortfolioContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const addTickerParam = searchParams.get("addTicker");
@@ -844,5 +844,19 @@ export default function MyPortfolioPage() {
           </>
         )}
     </div>
+  );
+}
+
+export default function MyPortfolioPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-2 border-slate-200 border-t-[#4F8DF7]" />
+        </div>
+      }
+    >
+      <MyPortfolioContent />
+    </Suspense>
   );
 }
