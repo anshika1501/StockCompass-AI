@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCompareStocks } from "@/hooks/use-compare-stocks";
-import { API_BASE } from "@/lib/api-base";
 import {
     ScatterChart,
     Scatter,
@@ -296,7 +295,6 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [clusterK, setClusterK] = useState(3);
-    const [sentimentScores, setSentimentScores] = useState<Record<string, number | null>>({});
     const { compareList, addToCompare, removeFromCompare, isInCompare } = useCompareStocks();
     const router = useRouter();
 
@@ -317,39 +315,6 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
         if (sectorSlug) loadData();
         return () => { active = false; };
     }, [sectorSlug]);
-
-    useEffect(() => {
-        let active = true;
-
-        const loadSentimentScores = async () => {
-            if (!data?.stocks?.length) {
-                if (active) setSentimentScores({});
-                return;
-            }
-
-            const entries = await Promise.all(
-                data.stocks.map(async (stock) => {
-                    try {
-                        const res = await fetch(`${API_BASE}/sentiment/stock/${encodeURIComponent(stock.symbol)}/`, {
-                            cache: "no-store",
-                        });
-                        if (!res.ok) return [stock.symbol, null] as const;
-                        const payload = await res.json();
-                        return [stock.symbol, typeof payload?.avg_score === "number" ? payload.avg_score : null] as const;
-                    } catch {
-                        return [stock.symbol, null] as const;
-                    }
-                })
-            );
-
-            if (active) {
-                setSentimentScores(Object.fromEntries(entries));
-            }
-        };
-
-        loadSentimentScores();
-        return () => { active = false; };
-    }, [data]);
 
     // Compute K-Means clustering + silhouette score for all 6 feature pairs
     const pairResults = useMemo(() => {
@@ -461,31 +426,18 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                     <th className="px-6 py-4 text-right text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Current PE</th>
                                     <th className="px-6 py-4 text-right text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Expected Value</th>
                                     <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Signal</th>
-                                    <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Sentiment Score</th>
                                     <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Opp. Score</th>
-                                    <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Compare</th>
-                                    <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Add to Portfolio</th>
+                                    <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {stocks.map((stock) => (
-                                    <tr
-                                        key={stock.symbol}
-                                        className="cursor-pointer hover:bg-blue-50/20 transition-colors group"
-                                        onClick={() => router.push(`/stock/${encodeURIComponent(stock.symbol)}`)}
-                                    >
+                                    <tr key={stock.symbol} className="hover:bg-blue-50/20 transition-colors group">
                                         <td className="px-6 py-5 whitespace-nowrap">
-                                            <button
-                                                type="button"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    router.push(`/stock/${encodeURIComponent(stock.symbol)}`);
-                                                }}
-                                                className="flex flex-col text-left"
-                                            >
-                                                <span className="font-bold text-[#4F8DF7] text-sm tracking-tight group-hover:text-[#2563EB]">{stock.symbol}</span>
-                                                <span className="text-[11px] font-medium text-gray-500 uppercase truncate max-w-[140px] group-hover:text-gray-700">{stock.company_name}</span>
-                                            </button>
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-[#4F8DF7] text-sm tracking-tight">{stock.symbol}</span>
+                                                <span className="text-[11px] font-medium text-gray-500 uppercase truncate max-w-[140px]">{stock.company_name}</span>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-5 text-right font-bold text-[#000000] text-sm tracking-tight">
                                             ₹{stock.current_price?.toLocaleString() ?? '-'}
@@ -515,30 +467,13 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                             </span>
                                         </td>
                                         <td className="px-6 py-5 text-center">
-                                            <div className={cn(
-                                                "inline-flex min-w-[72px] items-center justify-center rounded-xl border px-2.5 py-1.5 text-[12px] font-semibold shadow-inner",
-                                                sentimentScores[stock.symbol] == null
-                                                    ? "border-gray-100 bg-gray-50 text-gray-400"
-                                                    : sentimentScores[stock.symbol]! >= 0.05
-                                                        ? "border-emerald-100 bg-emerald-50 text-emerald-700"
-                                                        : sentimentScores[stock.symbol]! <= -0.05
-                                                            ? "border-rose-100 bg-rose-50 text-rose-700"
-                                                            : "border-amber-100 bg-amber-50 text-amber-700"
-                                            )}>
-                                                {sentimentScores[stock.symbol] == null
-                                                    ? "-"
-                                                    : `${sentimentScores[stock.symbol]! > 0 ? "+" : ""}${sentimentScores[stock.symbol]!.toFixed(3)}`}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-5 text-center">
                                             <div className="inline-flex items-center justify-center min-w-[54px] px-2.5 py-1.5 rounded-xl bg-blue-50 border border-blue-100 text-[#4F8DF7] text-[13px] font-semibold shadow-inner">
                                                 {stock.opportunity_score ?? '-'}
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 text-center whitespace-nowrap">
                                             <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
+                                                onClick={() => {
                                                     if (isInCompare(stock.symbol)) {
                                                         removeFromCompare(stock.symbol);
                                                     } else {
@@ -556,18 +491,6 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                                     ? <><CheckCircle2 size={13} /> Active</>
                                                     : <><PlusCircle size={13} /> Compare</>
                                                 }
-                                            </button>
-                                        </td>
-                                        <td className="px-6 py-5 text-center whitespace-nowrap">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    router.push(`/my-portfolio?addTicker=${encodeURIComponent(stock.symbol)}`);
-                                                }}
-                                                className="flex items-center gap-2 text-[10px] font-semibold px-4 py-2 rounded-xl transition-all mx-auto uppercase tracking-[0.12em] border text-white bg-emerald-600 border-emerald-600 shadow-lg shadow-emerald-600/15 hover:bg-emerald-700 hover:border-emerald-700"
-                                            >
-                                                <PlusCircle size={13} />
-                                                Add Stock
                                             </button>
                                         </td>
                                     </tr>
@@ -615,10 +538,10 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                     </div>
                 </CardHeader>
                 <CardContent className="p-8">
-                    <div className="flex flex-col gap-10">
+                    <div className="flex flex-col xl:flex-row gap-10">
 
                         {/* 6 scatter plot grid */}
-                        <div className="min-w-0 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="min-w-0 flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {pairResults.map(({ pair, points, silhouette }) => (
                                 <PairScatterChart
                                     key={pair.id}
@@ -632,9 +555,9 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                             ))}
                         </div>
 
-                        {/* Best Cluster Representation */}
+                        {/* Best Cluster Representation sidebar */}
                         {bestPair && (
-                            <div className="rounded-[2rem] border border-blue-100 bg-[#DBEAFE]/10 p-8 flex flex-col gap-8 shadow-inner">
+                            <div className="xl:w-96 shrink-0 rounded-[2rem] border border-blue-100 bg-[#DBEAFE]/10 p-8 flex flex-col gap-8 shadow-inner">
                                 {/* Header */}
                                 <div>
                                     <div className="flex items-center gap-2 mb-4">
@@ -660,22 +583,21 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                     </span>
                                 </div>
 
-                                <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] gap-8 items-start">
-                                    {/* Enlarged best-pair chart */}
-                                    <div className="bg-white rounded-2xl border border-white p-2 shadow-xl">
-                                        <PairScatterChart
-                                            pair={bestPair.pair}
-                                            points={bestPair.points}
-                                            clusterK={clusterK}
-                                            silhouette={bestPair.silhouette}
-                                            isBest={false}
-                                            compact={false}
-                                            hideHeader
-                                        />
-                                    </div>
+                                {/* Enlarged best-pair chart */}
+                                <div className="bg-white rounded-2xl border border-white p-2 shadow-xl">
+                                    <PairScatterChart
+                                        pair={bestPair.pair}
+                                        points={bestPair.points}
+                                        clusterK={clusterK}
+                                        silhouette={bestPair.silhouette}
+                                        isBest={false}
+                                        compact={false}
+                                        hideHeader
+                                    />
+                                </div>
 
-                                    {/* Cluster membership */}
-                                    <div>
+                                {/* Cluster membership */}
+                                <div>
                                     <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-[0.12em] mb-4 px-1">Sub-Group Membership</p>
                                     <div className="space-y-4">
                                         {Array.from({ length: clusterK }, (_, ci) => {
@@ -697,7 +619,6 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                                 </div>
                                             );
                                         })}
-                                    </div>
                                     </div>
                                 </div>
                             </div>

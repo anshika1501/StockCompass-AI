@@ -56,7 +56,6 @@ urlpatterns = [
     path('login/', views.login_user, name='login-user'),
     path('register/', views.register_user, name='register-user'),
     path('profile/', views.UpdateProfileView.as_view(), name='profile-update'),
-    path('verify-mpin/', views.verify_mpin, name='verify-mpin'),
 
     # Portfolio Management
     path('portfolio/create/', views.CreatePortfolioView.as_view(), name='create-portfolio'),
