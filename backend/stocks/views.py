@@ -2441,6 +2441,8 @@ def evaluate_predictions(request):
 
 
 @api_view(['POST'])
+@authentication_classes([])  # allow without session/token
+@permission_classes([AllowAny])
 def chat_with_stocks(request):
     """
     POST /api/chatbot/
