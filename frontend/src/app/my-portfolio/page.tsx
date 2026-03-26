@@ -289,21 +289,28 @@ export default function MyPortfolioPage() {
   };
 
   const handleDeleteHolding = async (holdingId: number) => {
+    if (!confirm("Remove this position from your portfolio?")) return;
     setDeletingHoldingId(holdingId);
     setError(null);
     try {
-      await deleteHolding(holdingId);
+      // Optimistically remove from UI
       setPortfolios((prev) =>
         prev.map((p) => ({
           ...p,
           holdings: p.holdings.filter((h) => Number(h.id) !== Number(holdingId)),
         }))
       );
+
+      await deleteHolding(holdingId);
+      // Background re-fetch to ensure correctness
+      await fetchPortfolios();
       setSuccessMessage("Holding removed.");
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: unknown) {
       console.error("Delete holding failed", err);
       setError(err instanceof Error ? err.message : "Delete failed");
+      // Restore on failure
+      await fetchPortfolios();
     } finally {
       setDeletingHoldingId(null);
     }
@@ -801,9 +808,14 @@ export default function MyPortfolioPage() {
                                   type="button"
                                   onClick={() => handleDeleteHolding(h.id)}
                                   disabled={deletingHoldingId === h.id}
-                                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-600 hover:text-white disabled:opacity-40"
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-4 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-600 hover:text-white disabled:opacity-40"
                                 >
-                                  {deletingHoldingId === h.id ? "…" : "Remove"}
+                                  {deletingHoldingId === h.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  )}
+                                  Remove
                                 </button>
                               </td>
                             </tr>
