@@ -77,6 +77,7 @@ function getAuthHeaders(): Record<string, string> {
   const token = getToken();
   return {
     "Content-Type": "application/json",
+    // DRF TokenAuthentication expects the "Token" scheme
     ...(token ? { Authorization: `Token ${token}` } : {}),
   };
 }

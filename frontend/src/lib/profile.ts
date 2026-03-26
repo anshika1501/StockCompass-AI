@@ -18,6 +18,7 @@ export async function updateProfile(payload: {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
+      // Standard DRF token header
       Authorization: `Token ${token}`,
     },
     body: JSON.stringify(payload),

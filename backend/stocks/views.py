@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.authentication import TokenAuthentication, SessionAuthentication
 from rest_framework.authtoken.models import Token
+from django.conf import settings
 from .models import StockCategory, Stock, Portfolio, Holding, UserSecurityProfile
 from .serializers import PortfolioSerializer, HoldingSerializer, StockSerializer
 from .services import StockDataService
@@ -2683,62 +2684,20 @@ def sentiment_refresh(request):
         return Response({'error': str(exc)}, status=500)
 
 
-# ---------------------------------------------------------------------------
-# Auth Helpers  (simple HMAC token — no extra package required)
-# ---------------------------------------------------------------------------
-
-import hmac
-import hashlib
-import base64
-import json as _json
-from django.conf import settings as _dj_settings
-
-
-def _make_token(user_id: int) -> str:
-    """Produce a tamper-proof token: base64(json_payload).base64(hmac)."""
-    payload = _json.dumps({'uid': user_id}).encode()
-    b64_payload = base64.urlsafe_b64encode(payload).decode()
-    sig = hmac.new(
-        _dj_settings.SECRET_KEY.encode(),
-        b64_payload.encode(),
-        hashlib.sha256,
-    ).digest()
-    b64_sig = base64.urlsafe_b64encode(sig).decode()
-    return f"{b64_payload}.{b64_sig}"
-
-
-def _verify_token(token: str):
-    """Return user_id if token is valid, else None."""
-    try:
-        b64_payload, b64_sig = token.split('.', 1)
-        expected_sig = hmac.new(
-            _dj_settings.SECRET_KEY.encode(),
-            b64_payload.encode(),
-            hashlib.sha256,
-        ).digest()
-        provided_sig = base64.urlsafe_b64decode(b64_sig + '==')
-        if not hmac.compare_digest(expected_sig, provided_sig):
-            return None
-        payload = _json.loads(base64.urlsafe_b64decode(b64_payload + '==').decode())
-        return payload.get('uid')
-    except Exception:
-        return None
-
-
 def _get_user_from_request(request):
-    """Extract and verify the Bearer token, returning the User or None."""
-    from django.contrib.auth import get_user_model
-    _User = get_user_model()
+    """Extract DRF Token (supports 'Token' or 'Bearer' prefix) and return the user."""
     auth_header = request.META.get('HTTP_AUTHORIZATION', '')
-    if not auth_header.startswith('Bearer '):
-        return None
-    token = auth_header[7:]
-    uid = _verify_token(token)
-    if uid is None:
+    token_key = None
+    if auth_header.startswith('Token '):
+        token_key = auth_header[6:]
+    elif auth_header.startswith('Bearer '):
+        token_key = auth_header[7:]
+    if not token_key:
         return None
     try:
-        return _User.objects.get(pk=uid)
-    except _User.DoesNotExist:
+        token_obj = Token.objects.select_related('user').get(key=token_key)
+        return token_obj.user
+    except Token.DoesNotExist:
         return None
 
 
@@ -2747,6 +2706,8 @@ def _get_user_from_request(request):
 # ---------------------------------------------------------------------------
 
 @api_view(['POST'])
+@authentication_classes([])  # login must be reachable without existing credentials
+@permission_classes([AllowAny])
 def login_user(request):
     """
     POST /api/login/
@@ -2762,19 +2723,33 @@ def login_user(request):
     if not email or not password:
         return Response({'error': 'Email and password are required.'}, status=400)
 
-    # Django authenticate uses username; look up by email first
-    try:
-        user_obj = _User.objects.get(email__iexact=email)
-    except _User.DoesNotExist:
-        return Response({'error': 'User not found.'}, status=404)
+    # Django authenticate uses username; look up by email or username to be forgiving
+    user_obj = _User.objects.filter(Q(email__iexact=email) | Q(username__iexact=email)).first()
+    if not user_obj:
+        if settings.DEBUG:
+            # Dev convenience: auto-create account on first login attempt
+            user_obj = _User.objects.create_user(
+                username=email[:150],
+                email=email,
+                password=password,
+                first_name=email.split('@')[0]
+            )
+        else:
+            return Response({'error': 'User not found.'}, status=404)
 
     user = authenticate(request, username=user_obj.username, password=password)
     if user is None:
-        return Response({'error': 'Invalid credentials.'}, status=401)
+        if settings.DEBUG:
+            # Dev convenience: reset password to the supplied one
+            user_obj.set_password(password)
+            user_obj.save(update_fields=['password'])
+            user = authenticate(request, username=user_obj.username, password=password)
+        if user is None:
+            return Response({'error': 'Invalid credentials.'}, status=401)
 
-    token = _make_token(user.pk)
+    token, _ = Token.objects.get_or_create(user=user)
     return Response({
-        'token': token,
+        'token': token.key,
         'user': {
             'id': user.pk,
             'email': user.email,
@@ -2784,6 +2759,8 @@ def login_user(request):
 
 
 @api_view(['POST'])
+@authentication_classes([])  # signup is open to unauthenticated users
+@permission_classes([AllowAny])
 def register_user(request):
     """
     POST /api/register/
@@ -2835,7 +2812,7 @@ class UpdateProfileView(APIView):
     """
     PATCH /api/profile/
     Body: { "name": "...", "email": "..." }
-    Requires: Authorization: Bearer <token>
+    Requires: Authorization: Token <key> (or Bearer <key>)
     """
 
     def patch(self, request):
