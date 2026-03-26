@@ -6,7 +6,7 @@ from django.core.cache import cache
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from .models import StockCategory, Stock, Portfolio, Holding, UserSecurityProfile
-from .serializers import PortfolioSerializer, HoldingSerializer
+from .serializers import PortfolioSerializer, HoldingSerializer, StockSerializer
 from .services import StockDataService
 from .chatbot import ChatAdvisorService, OllamaClient, DEFAULT_CHAT_MODEL, DEFAULT_EMBED_MODEL, DEFAULT_OLLAMA_BASE
 from .analytics import (
@@ -2157,14 +2157,19 @@ class PortfolioDetailView(APIView):
                 return ticker, None
 
         price_map = {}
-        with ThreadPoolExecutor(max_workers=min(len(unique_tickers), 15)) as ex:
-            futures = {ex.submit(_fetch_price, t): t for t in unique_tickers}
-            for f in as_completed(futures, timeout=30):
+        if unique_tickers:
+            with ThreadPoolExecutor(max_workers=min(len(unique_tickers), 15)) as ex:
+                futures = {ex.submit(_fetch_price, t): t for t in unique_tickers}
                 try:
-                    t, data = f.result()
-                    if data:
-                        price_map[t] = data
+                    for f in as_completed(futures, timeout=10):
+                        try:
+                            t, data = f.result()
+                            if data:
+                                price_map[t] = data
+                        except Exception:
+                            pass
                 except Exception:
+                    # TimeoutError is thrown by the generator if taking too long
                     pass
 
         # ── enrich holdings ────────────────────────────────────────────
@@ -2189,6 +2194,13 @@ class PortfolioDetailView(APIView):
         total_days_pnl = 0.0
         total_est_dividends = 0.0
         sectors_seen = {}
+
+        # Pre-fetch all required Stock and Sentiment objects in bulk
+        stock_map = {s.symbol: s for s in Stock.objects.filter(symbol__in=unique_tickers)}
+        sentiment_map = {}
+        for s in Sentiment.objects.filter(ticker__in=unique_tickers).order_by('ticker', '-fetched'):
+            if s.ticker not in sentiment_map:
+                sentiment_map[s.ticker] = s
 
         enriched = []
         for h in holdings:
@@ -2627,3 +2639,480 @@ def sentiment_refresh(request):
     except Exception as exc:
         logger.error("sentiment_refresh error: %s", exc)
         return Response({'error': str(exc)}, status=500)
+
+
+# ---------------------------------------------------------------------------
+# Auth Helpers  (simple HMAC token — no extra package required)
+# ---------------------------------------------------------------------------
+
+import hmac
+import hashlib
+import base64
+import json as _json
+from django.conf import settings as _dj_settings
+
+
+def _make_token(user_id: int) -> str:
+    """Produce a tamper-proof token: base64(json_payload).base64(hmac)."""
+    payload = _json.dumps({'uid': user_id}).encode()
+    b64_payload = base64.urlsafe_b64encode(payload).decode()
+    sig = hmac.new(
+        _dj_settings.SECRET_KEY.encode(),
+        b64_payload.encode(),
+        hashlib.sha256,
+    ).digest()
+    b64_sig = base64.urlsafe_b64encode(sig).decode()
+    return f"{b64_payload}.{b64_sig}"
+
+
+def _verify_token(token: str):
+    """Return user_id if token is valid, else None."""
+    try:
+        b64_payload, b64_sig = token.split('.', 1)
+        expected_sig = hmac.new(
+            _dj_settings.SECRET_KEY.encode(),
+            b64_payload.encode(),
+            hashlib.sha256,
+        ).digest()
+        provided_sig = base64.urlsafe_b64decode(b64_sig + '==')
+        if not hmac.compare_digest(expected_sig, provided_sig):
+            return None
+        payload = _json.loads(base64.urlsafe_b64decode(b64_payload + '==').decode())
+        return payload.get('uid')
+    except Exception:
+        return None
+
+
+def _get_user_from_request(request):
+    """Extract and verify the Bearer token, returning the User or None."""
+    from django.contrib.auth import get_user_model
+    _User = get_user_model()
+    auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+    if not auth_header.startswith('Bearer '):
+        return None
+    token = auth_header[7:]
+    uid = _verify_token(token)
+    if uid is None:
+        return None
+    try:
+        return _User.objects.get(pk=uid)
+    except _User.DoesNotExist:
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Auth Views
+# ---------------------------------------------------------------------------
+
+@api_view(['POST'])
+def login_user(request):
+    """
+    POST /api/login/
+    Body: { "email": "...", "password": "..." }
+    Returns: { "token": "...", "user": { "id", "email", "name" } }
+    """
+    from django.contrib.auth import authenticate, get_user_model
+    _User = get_user_model()
+
+    email = (request.data.get('email') or '').strip().lower()
+    password = request.data.get('password') or ''
+
+    if not email or not password:
+        return Response({'error': 'Email and password are required.'}, status=400)
+
+    # Django authenticate uses username; look up by email first
+    try:
+        user_obj = _User.objects.get(email__iexact=email)
+    except _User.DoesNotExist:
+        return Response({'error': 'User not found.'}, status=404)
+
+    user = authenticate(request, username=user_obj.username, password=password)
+    if user is None:
+        return Response({'error': 'Invalid credentials.'}, status=401)
+
+    token = _make_token(user.pk)
+    return Response({
+        'token': token,
+        'user': {
+            'id': user.pk,
+            'email': user.email,
+            'name': user.get_full_name() or user.username,
+        },
+    })
+
+
+@api_view(['POST'])
+def register_user(request):
+    """
+    POST /api/register/
+    Body: { "email": "...", "password": "...", "name": "...", "mpin": "1234" }
+    Returns: { "message": "Account created." }
+    """
+    from django.contrib.auth import get_user_model
+    _User = get_user_model()
+
+    email = (request.data.get('email') or '').strip().lower()
+    password = request.data.get('password') or ''
+    name = (request.data.get('name') or '').strip()
+    mpin = (request.data.get('mpin') or '').strip()
+
+    if not email or not password:
+        return Response({'error': 'Email and password are required.'}, status=400)
+
+    if _User.objects.filter(email__iexact=email).exists():
+        return Response({'error': 'An account with that email already exists.'}, status=409)
+
+    # Use email as username (truncated to 150 chars)
+    username = email[:150]
+    try:
+        user = _User.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+        )
+        if name:
+            parts = name.split(' ', 1)
+            user.first_name = parts[0]
+            user.last_name = parts[1] if len(parts) > 1 else ''
+            user.save(update_fields=['first_name', 'last_name'])
+
+        # Store MPIN hash if provided
+        if mpin:
+            import hashlib as _hl
+            mpin_hash = _hl.sha256(mpin.encode()).hexdigest()
+            UserSecurityProfile.objects.create(user=user, mpin_hash=mpin_hash)
+
+    except Exception as exc:
+        logger.error("register_user error: %s", exc)
+        return Response({'error': 'Could not create account. Please try again.'}, status=500)
+
+    return Response({'message': 'Account created.'}, status=201)
+
+
+class UpdateProfileView(APIView):
+    """
+    PATCH /api/profile/
+    Body: { "name": "...", "email": "..." }
+    Requires: Authorization: Bearer <token>
+    """
+
+    def patch(self, request):
+        user = _get_user_from_request(request)
+        if user is None:
+            return Response({'error': 'Authentication required.'}, status=401)
+
+        name = request.data.get('name')
+        email = request.data.get('email')
+
+        if name:
+            parts = name.strip().split(' ', 1)
+            user.first_name = parts[0]
+            user.last_name = parts[1] if len(parts) > 1 else ''
+
+        if email:
+            user.email = email.strip().lower()
+
+        user.save()
+        return Response({
+            'id': user.pk,
+            'email': user.email,
+            'name': user.get_full_name() or user.username,
+        })
+
+
+# ---------------------------------------------------------------------------
+# Portfolio CRUD Views
+# ---------------------------------------------------------------------------
+
+class GetPortfoliosView(APIView):
+    """GET /api/portfolio/ — list all portfolios for the authenticated user."""
+
+    def get(self, request):
+        user = _get_user_from_request(request)
+        if user is None:
+            return Response({'error': 'Authentication required.'}, status=401)
+
+        portfolios = Portfolio.objects.filter(user=user).prefetch_related('holdings')
+        data = PortfolioSerializer(portfolios, many=True).data
+        return Response(data)
+
+
+class CreatePortfolioView(APIView):
+    """POST /api/portfolio/create/ — create a new portfolio."""
+
+    def post(self, request):
+        user = _get_user_from_request(request)
+        if user is None:
+            return Response({'error': 'Authentication required.'}, status=401)
+
+        name = (request.data.get('name') or '').strip()
+        description = (request.data.get('description') or '').strip()
+
+        if not name:
+            return Response({'error': 'Portfolio name is required.'}, status=400)
+
+        portfolio = Portfolio.objects.create(user=user, name=name, description=description)
+        return Response(PortfolioSerializer(portfolio).data, status=201)
+
+
+class PortfolioDetailView(APIView):
+    """GET /api/portfolio/<id>/detail/ — enriched detail with live prices & P&L."""
+
+    def get(self, request, id):
+        user = _get_user_from_request(request)
+        if user is None:
+            return Response({'error': 'Authentication required.'}, status=401)
+
+        try:
+            portfolio = Portfolio.objects.prefetch_related('holdings').get(pk=id, user=user)
+        except Portfolio.DoesNotExist:
+            return Response({'error': 'Portfolio not found.'}, status=404)
+
+        holdings = list(portfolio.holdings.all())
+
+        # Build enriched holdings with live prices via yfinance
+        import yfinance as yf
+
+        enriched = []
+        sector_map: dict[str, float] = {}
+        total_invested = 0.0
+        total_current = 0.0
+        total_days_pnl = 0.0
+        total_dividends = 0.0
+
+        tickers_needed = list({h.ticker for h in holdings})
+        # Build a cache of live prices and sentiment scores
+        live_cache: dict[str, dict] = {}
+        sentiment_cache: dict[str, float] = {}
+
+        if tickers_needed:
+            # 1. Fetch live prices from yf
+            try:
+                tickers_obj = yf.Tickers(' '.join(tickers_needed))
+                for sym in tickers_needed:
+                    try:
+                        info = tickers_obj.tickers[sym].info or {}
+                    except Exception:
+                        info = {}
+                    live_cache[sym] = info
+            except Exception:
+                pass
+
+            # 2. Fetch average sentiment scores from DB
+            from django.db.models import Avg
+            from .models import SentimentArticle
+            sentiment_data = (
+                SentimentArticle.objects
+                .filter(ticker__in=tickers_needed)
+                .values('ticker')
+                .annotate(avg_score=Avg('compound_score'))
+            )
+            for row in sentiment_data:
+                sentiment_cache[row['ticker']] = row['avg_score']
+
+        for h in holdings:
+            info = live_cache.get(h.ticker, {})
+            current_price = float(
+                info.get('currentPrice') or
+                info.get('regularMarketPrice') or
+                info.get('previousClose') or
+                h.buy_price
+            )
+            prev_close = float(info.get('previousClose') or current_price)
+            day_high = info.get('dayHigh')
+            day_low = info.get('dayLow')
+            high52 = info.get('fiftyTwoWeekHigh')
+            low52 = info.get('fiftyTwoWeekLow')
+            sector = info.get('sector') or 'Unknown'
+            div_yield = float(info.get('dividendYield') or 0)
+
+            invested = h.buy_price * h.quantity
+            current_value = current_price * h.quantity
+            pnl = current_value - invested
+            pnl_pct = (pnl / invested * 100) if invested else 0.0
+            days_pnl = (current_price - prev_close) * h.quantity
+            annual_div = div_yield * current_value
+
+            # Risk tag
+            if high52 and low52:
+                rng = float(high52) - float(low52)
+                vol_pct = (rng / float(low52) * 100) if low52 else 0
+                risk_tag = 'High' if vol_pct > 50 else ('Medium' if vol_pct > 20 else 'Low')
+            else:
+                risk_tag = 'Unknown'
+
+            sector_map[sector] = sector_map.get(sector, 0.0) + current_value
+            total_invested += invested
+            total_current += current_value
+            total_days_pnl += days_pnl
+            total_dividends += annual_div
+
+            enriched.append({
+                'id': h.id,
+                'ticker': h.ticker,
+                'company_name': h.company_name,
+                'quantity': h.quantity,
+                'buy_price': h.buy_price,
+                'current_price': round(current_price, 2),
+                'invested': round(invested, 2),
+                'current_value': round(current_value, 2),
+                'pnl': round(pnl, 2),
+                'pnl_pct': round(pnl_pct, 2),
+                'days_pnl': round(days_pnl, 2),
+                'sector': sector,
+                'sentiment_score': sentiment_cache.get(h.ticker),
+                'risk_tag': risk_tag,
+                'buy_time': h.buy_time.isoformat(),
+                'day_high': round(float(day_high), 2) if day_high else None,
+                'day_low': round(float(day_low), 2) if day_low else None,
+                'fifty_two_high': round(float(high52), 2) if high52 else None,
+                'fifty_two_low': round(float(low52), 2) if low52 else None,
+                'estimated_annual_dividend': round(annual_div, 2),
+            })
+
+        # Sector allocation
+        sector_allocation = [
+            {
+                'sector': sec,
+                'value': round(val, 2),
+                'weight_pct': round(val / total_current * 100, 2) if total_current else 0,
+            }
+            for sec, val in sorted(sector_map.items(), key=lambda x: -x[1])
+        ]
+
+        total_pnl = total_current - total_invested
+        total_return_pct = (total_pnl / total_invested * 100) if total_invested else 0
+        diversification_score = min(100, len(sector_map) * 10 + len(enriched) * 2)
+
+        summary = {
+            'total_invested': round(total_invested, 2),
+            'current_value': round(total_current, 2),
+            'total_pnl': round(total_pnl, 2),
+            'total_return_pct': round(total_return_pct, 2),
+            'days_pnl': round(total_days_pnl, 2),
+            'diversification_score': diversification_score,
+            'estimated_annual_dividends': round(total_dividends, 2),
+            'num_holdings': len(enriched),
+            'sector_allocation': sector_allocation,
+        }
+
+        return Response({
+            'id': portfolio.pk,
+            'name': portfolio.name,
+            'description': portfolio.description,
+            'created_at': portfolio.created_at.isoformat(),
+            'summary': summary,
+            'holdings': enriched,
+        })
+
+
+class DeletePortfolioView(APIView):
+    """DELETE /api/portfolio/<id>/delete/"""
+
+    def delete(self, request, id):
+        user = _get_user_from_request(request)
+        if user is None:
+            return Response({'error': 'Authentication required.'}, status=401)
+
+        try:
+            portfolio = Portfolio.objects.get(pk=id, user=user)
+        except Portfolio.DoesNotExist:
+            return Response({'error': 'Portfolio not found.'}, status=404)
+
+        portfolio.delete()
+        return Response({'message': 'Portfolio deleted.'}, status=200)
+
+
+class RenamePortfolioView(APIView):
+    """PATCH /api/portfolio/<id>/rename/ — update name and/or description."""
+
+    def patch(self, request, id):
+        user = _get_user_from_request(request)
+        if user is None:
+            return Response({'error': 'Authentication required.'}, status=401)
+
+        try:
+            portfolio = Portfolio.objects.prefetch_related('holdings').get(pk=id, user=user)
+        except Portfolio.DoesNotExist:
+            return Response({'error': 'Portfolio not found.'}, status=404)
+
+        name = request.data.get('name')
+        description = request.data.get('description')
+
+        if name is not None:
+            portfolio.name = name.strip()
+        if description is not None:
+            portfolio.description = description.strip()
+
+        portfolio.save()
+        return Response(PortfolioSerializer(portfolio).data)
+
+
+# ---------------------------------------------------------------------------
+# Holding CRUD Views
+# ---------------------------------------------------------------------------
+
+class AddHoldingView(APIView):
+    """POST /api/holding/add/"""
+
+    def post(self, request):
+        user = _get_user_from_request(request)
+        if user is None:
+            return Response({'error': 'Authentication required.'}, status=401)
+
+        portfolio_id = request.data.get('portfolio_id')
+        ticker = (request.data.get('ticker') or '').strip().upper()
+        company_name = (request.data.get('company_name') or ticker).strip()
+        quantity = request.data.get('quantity')
+        buy_price = request.data.get('buy_price')
+
+        if not all([portfolio_id, ticker, quantity, buy_price]):
+            return Response(
+                {'error': 'portfolio_id, ticker, quantity, and buy_price are required.'},
+                status=400,
+            )
+
+        try:
+            portfolio = Portfolio.objects.get(pk=portfolio_id, user=user)
+        except Portfolio.DoesNotExist:
+            return Response({'error': 'Portfolio not found.'}, status=404)
+
+        try:
+            quantity = int(quantity)
+            buy_price = float(buy_price)
+        except (ValueError, TypeError):
+            return Response({'error': 'quantity must be integer, buy_price must be numeric.'}, status=400)
+
+        if quantity <= 0:
+            return Response({'error': 'quantity must be greater than 0.'}, status=400)
+        if buy_price <= 0:
+            return Response({'error': 'buy_price must be greater than 0.'}, status=400)
+
+        holding = Holding.objects.create(
+            portfolio=portfolio,
+            ticker=ticker,
+            company_name=company_name,
+            quantity=quantity,
+            buy_price=buy_price,
+        )
+        return Response(HoldingSerializer(holding).data, status=201)
+
+
+class DeleteHoldingView(APIView):
+    """POST /api/holding/delete/<id>/"""
+
+    def post(self, request, id):
+        user = _get_user_from_request(request)
+        if user is None:
+            return Response({'error': 'Authentication required.'}, status=401)
+
+        try:
+            holding = Holding.objects.select_related('portfolio__user').get(pk=id)
+        except Holding.DoesNotExist:
+            return Response({'error': 'Holding not found.'}, status=404)
+
+        if holding.portfolio.user_id != user.pk:
+            return Response({'error': 'Not authorised.'}, status=403)
+
+        holding.delete()
+        return Response({'message': 'Holding deleted.'}, status=200)

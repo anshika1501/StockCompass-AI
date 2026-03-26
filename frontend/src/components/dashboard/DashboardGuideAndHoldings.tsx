@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { getPortfolios, getToken, type Portfolio, type Holding } from "@/lib/portfolio-data";
+import { getPortfolios, getToken, deleteHolding, type Portfolio, type Holding } from "@/lib/portfolio-data";
 import {
   BriefcaseBusiness,
   Bot,
@@ -12,6 +12,8 @@ import {
   Sparkles,
   ShieldCheck,
   Wallet,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
@@ -21,6 +23,20 @@ export default function DashboardGuideAndHoldings() {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const fetchPortfolios = async (alive = true) => {
+    try {
+      const data = await getPortfolios();
+      if (!alive) return;
+      setPortfolios(data);
+      setState("ready");
+    } catch (e) {
+      if (!alive) return;
+      setError(e instanceof Error ? e.message : "Failed to load portfolios");
+      setState("error");
+    }
+  };
 
   useEffect(() => {
     const token = getToken();
@@ -36,23 +52,25 @@ export default function DashboardGuideAndHoldings() {
     setState("loading");
     setError(null);
 
-    (async () => {
-      try {
-        const data = await getPortfolios();
-        if (!alive) return;
-        setPortfolios(data);
-        setState("ready");
-      } catch (e) {
-        if (!alive) return;
-        setError(e instanceof Error ? e.message : "Failed to load portfolios");
-        setState("error");
-      }
-    })();
+    fetchPortfolios(alive);
 
     return () => {
       alive = false;
     };
   }, []);
+
+  const handleDeleteHolding = async (holdingId: number) => {
+    if (!confirm("Remove this holding?")) return;
+    setDeletingId(holdingId);
+    try {
+      await deleteHolding(holdingId);
+      await fetchPortfolios();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const { totalHoldings, totalInvestment, activeBookName, recentHoldings } = useMemo(() => {
     const totalInvestment = portfolios.reduce((sum, p) => {
@@ -223,14 +241,28 @@ export default function DashboardGuideAndHoldings() {
               ) : (
                 <div className="mt-3 space-y-2">
                   {recentHoldings.map((h) => (
-                    <div key={h.id} className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 ring-1 ring-slate-200/60">
+                    <div key={h.id} className="group relative flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 ring-1 ring-slate-200/60 transition-all hover:ring-[#4F8DF7]/30">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-bold text-[#4F8DF7]">{h.ticker}</p>
                         <p className="truncate text-xs font-medium text-slate-600">{h.company_name}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-extrabold text-slate-900 tabular-nums">{h.quantity}</p>
-                        <p className="text-xs font-medium text-slate-500 tabular-nums">₹{Number(h.buy_price).toLocaleString("en-IN")}</p>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="text-sm font-extrabold text-slate-900 tabular-nums">{h.quantity}</p>
+                          <p className="text-xs font-medium text-slate-500 tabular-nums">₹{Number(h.buy_price).toLocaleString("en-IN")}</p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteHolding(h.id)}
+                          disabled={deletingId === h.id}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100 sm:opacity-0"
+                          title="Remove holding"
+                        >
+                          {deletingId === h.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                        </button>
                       </div>
                     </div>
                   ))}

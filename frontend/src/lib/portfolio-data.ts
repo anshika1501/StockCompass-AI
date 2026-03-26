@@ -23,6 +23,7 @@ export interface EnrichedHolding {
   pnl_pct: number;
   days_pnl: number;
   sector: string;
+  sentiment_score: number | null;
   risk_tag: "Low" | "Medium" | "High" | "Unknown";
   buy_time: string;
   day_high: number | null;
