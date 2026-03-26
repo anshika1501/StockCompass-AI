@@ -1,10 +1,12 @@
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
 from django.db.models import Q
 from django.core.cache import cache
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.authentication import TokenAuthentication, SessionAuthentication
+from rest_framework.authtoken.models import Token
 from .models import StockCategory, Stock, Portfolio, Holding, UserSecurityProfile
 from .serializers import PortfolioSerializer, HoldingSerializer
 from .services import StockDataService
@@ -391,9 +393,13 @@ def stock_search(request):
 
 
 @api_view(['POST'])
+@authentication_classes([TokenAuthentication, SessionAuthentication])
+@permission_classes([IsAuthenticated])
 def initialize_stock_data(request):
     """POST /api/initialize/ - Initialize/refresh all stock data."""
     try:
+        if not request.user.is_staff:
+            return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
         success = StockDataService.initialize_categories_and_stocks()
         if success:
             return Response({'message': 'Stock data initialized successfully'}, status=status.HTTP_201_CREATED)
@@ -1788,6 +1794,7 @@ def asset_forecast(request):
         return Response({'error': str(e), 'trace': traceback.format_exc()}, status=500)
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def register_user(request):
     """
     POST /api/register/
@@ -1822,9 +1829,11 @@ def register_user(request):
                 mpin_hash=make_password(mpin),
             )
             
+        token, _ = Token.objects.get_or_create(user=user)
         return Response({
             'message': 'Registration successful.',
-            'user': {'email': user.email, 'name': user.first_name}
+            'user': {'email': user.email, 'name': user.first_name},
+            'token': token.key,
         }, status=201)
         
     except IntegrityError:
@@ -1833,6 +1842,7 @@ def register_user(request):
         return Response({'error': str(e)}, status=500)
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def login_user(request):
     """
     POST /api/login/
@@ -1855,11 +1865,10 @@ def login_user(request):
     user = authenticate(username=email, password=password)
     
     if user is not None:
-        # Note: Since there's no JWT dependency, we'll return a simple mock token
-        # for frontend state management as instructed.
+        token, _ = Token.objects.get_or_create(user=user)
         return Response({
             'message': 'Login successful.',
-            'token': f'session_{user.id}_valid',
+            'token': token.key,
             'user': {
                 'id': user.id,
                 'email': user.email,
@@ -2028,20 +2037,28 @@ from .models import Portfolio, Holding
 from .serializers import PortfolioSerializer, HoldingSerializer
 
 def get_user_from_request(request):
-    """Parse mock token from header: Bearer session_<user_id>_valid"""
+    """Resolve the authenticated user from DRF auth or a Token header."""
+    if getattr(request, "user", None) and request.user.is_authenticated:
+        return request.user
+
     auth_header = request.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer session_"):
-        try:
-            user_id = auth_header.split("_")[1]
-            User = get_user_model()
-            return User.objects.filter(id=user_id).first()
-        except:
-            return None
+    prefixes = ("Token ", "Bearer ")
+    for prefix in prefixes:
+        if auth_header.startswith(prefix):
+            token_key = auth_header[len(prefix):].strip()
+            try:
+                token = Token.objects.select_related("user").get(key=token_key)
+                return token.user
+            except Token.DoesNotExist:
+                return None
     return None
 
 
 class UpdateProfileView(APIView):
     """PATCH /api/profile/ — update display name and/or email (username) for the session user."""
+
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+    permission_classes = [IsAuthenticated]
 
     def patch(self, request):
         user = get_user_from_request(request)
@@ -2084,6 +2101,9 @@ class UpdateProfileView(APIView):
 
 
 class CreatePortfolioView(APIView):
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
         user = get_user_from_request(request)
         if not user:
@@ -2097,6 +2117,9 @@ class CreatePortfolioView(APIView):
 
 
 class GetPortfoliosView(APIView):
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         user = get_user_from_request(request)
         if not user:
@@ -2112,6 +2135,9 @@ class PortfolioDetailView(APIView):
     GET /api/portfolio/<id>/detail/
     Returns an enriched portfolio with live prices, P&L, analytics.
     """
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, id):
         import yfinance as yf
         from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -2272,6 +2298,9 @@ class PortfolioDetailView(APIView):
 
 
 class AddHoldingView(APIView):
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
         user = get_user_from_request(request)
         if not user:
@@ -2290,6 +2319,9 @@ class AddHoldingView(APIView):
 
 
 class DeleteHoldingView(APIView):
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def post(self, request, id):
         user = get_user_from_request(request)
         if not user:
@@ -2304,6 +2336,9 @@ class DeleteHoldingView(APIView):
 
 
 class DeletePortfolioView(APIView):
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def delete(self, request, id):
         user = get_user_from_request(request)
         if not user:
@@ -2318,6 +2353,9 @@ class DeletePortfolioView(APIView):
 
 
 class RenamePortfolioView(APIView):
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def patch(self, request, id):
         user = get_user_from_request(request)
         if not user:
@@ -2345,6 +2383,8 @@ class RenamePortfolioView(APIView):
         return Response(serializer.data)
 
 @api_view(['POST'])
+@authentication_classes([TokenAuthentication, SessionAuthentication])
+@permission_classes([IsAuthenticated])
 def evaluate_predictions(request):
     """
     POST: Evaluate predictions that have passed their target time.
@@ -2609,6 +2649,8 @@ def sentiment_stock_detail(request, ticker):
 
 
 @api_view(['POST'])
+@authentication_classes([TokenAuthentication, SessionAuthentication])
+@permission_classes([IsAuthenticated])
 def sentiment_refresh(request):
     """
     POST /api/sentiment/refresh/

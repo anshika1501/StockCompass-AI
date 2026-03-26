@@ -18,7 +18,7 @@ export async function updateProfile(payload: {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      Authorization: `Token ${token}`,
     },
     body: JSON.stringify(payload),
   });

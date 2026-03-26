@@ -4,6 +4,7 @@ Django settings for stock_api project.
 
 from pathlib import Path
 import os
+import secrets
 
 from dotenv import load_dotenv
 
@@ -13,13 +14,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Load environment variables from backend/.env when running locally.
 load_dotenv(BASE_DIR / '.env')
 
+
+def env_bool(name: str, default: bool = False) -> bool:
+    """Parse a boolean-ish environment variable safely."""
+    return os.environ.get(name, str(default)).lower() in ('true', '1', 'yes', 'on')
+
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-your-secret-key-here')
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY') or secrets.token_urlsafe(50)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
+DEBUG = env_bool('DJANGO_DEBUG', False)
 
-ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,*').split(',')
+# Never default to wildcard in production; require explicit host list via env.
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
 
 
 # Application definition
@@ -32,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',
     'corsheaders',
     'pgvector.django',
     'stocks',
@@ -142,7 +151,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
@@ -151,11 +164,16 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 20
 }
 
-# CORS settings
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
+# CORS settings (lock down by default; allow list via env)
+_cors_allowed = [
+    origin.strip() for origin in os.environ.get('DJANGO_CORS_ALLOWED_ORIGINS', '').split(',') if origin.strip()
+]
 
-_csrf_env = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+CORS_ALLOW_ALL_ORIGINS = env_bool('DJANGO_CORS_ALLOW_ALL', False)
+CORS_ALLOWED_ORIGINS = _cors_allowed if _cors_allowed else []
+CORS_ALLOW_CREDENTIALS = env_bool('DJANGO_CORS_ALLOW_CREDENTIALS', False)
+
+_csrf_env = os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '')
 CSRF_TRUSTED_ORIGINS = [
     origin.strip() for origin in _csrf_env.split(',') if origin.strip()
 ]

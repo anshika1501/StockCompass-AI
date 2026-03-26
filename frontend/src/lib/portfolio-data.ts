@@ -76,7 +76,7 @@ function getAuthHeaders(): Record<string, string> {
   const token = getToken();
   return {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(token ? { Authorization: `Token ${token}` } : {}),
   };
 }
 
