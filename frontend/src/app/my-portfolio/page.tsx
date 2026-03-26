@@ -505,12 +505,12 @@ export default function MyPortfolioPage() {
                       role="button"
                       tabIndex={0}
                       onClick={() => {
-                        setSelectedPortfolioId(p.id);
+                        if (!editingPortfolioId) router.push(`/my-portfolio/${p.id}`);
                       }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          setSelectedPortfolioId(p.id);
+                          if (!editingPortfolioId) router.push(`/my-portfolio/${p.id}`);
                         }
                       }}
                       className={`relative rounded-2xl border bg-white p-5 text-left shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all outline-none focus-visible:ring-2 focus-visible:ring-[#4F8DF7]/40 ${
@@ -586,9 +586,14 @@ export default function MyPortfolioPage() {
                           <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-600">
                             {(p.description ?? "").trim() || "No description provided."}
                           </p>
-                          <p className="mt-3 text-xs font-medium text-slate-500">
-                            {p.holdings.length} position{p.holdings.length !== 1 ? "s" : ""}
-                          </p>
+                          <div className="mt-3 flex items-center justify-between">
+                            <p className="text-xs font-medium text-slate-500">
+                              {p.holdings.length} position{p.holdings.length !== 1 ? "s" : ""}
+                            </p>
+                            <span className="text-xs font-semibold text-[#4F8DF7]">
+                              View Details →
+                            </span>
+                          </div>
                         </>
                       )}
                     </div>

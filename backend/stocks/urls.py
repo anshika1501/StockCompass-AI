@@ -60,6 +60,7 @@ urlpatterns = [
     # Portfolio Management
     path('portfolio/create/', views.CreatePortfolioView.as_view(), name='create-portfolio'),
     path('portfolio/', views.GetPortfoliosView.as_view(), name='get-portfolios'),
+    path('portfolio/<int:id>/detail/', views.PortfolioDetailView.as_view(), name='portfolio-detail'),
     path('portfolio/<int:id>/delete/', views.DeletePortfolioView.as_view(), name='delete-portfolio'),
     path('portfolio/<int:id>/rename/', views.RenamePortfolioView.as_view(), name='rename-portfolio'),
     path('holding/add/', views.AddHoldingView.as_view(), name='add-holding'),

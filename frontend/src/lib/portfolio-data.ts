@@ -10,6 +10,55 @@ export interface Holding {
   buy_time: string;
 }
 
+export interface EnrichedHolding {
+  id: number;
+  ticker: string;
+  company_name: string;
+  quantity: number;
+  buy_price: number;
+  current_price: number;
+  invested: number;
+  current_value: number;
+  pnl: number;
+  pnl_pct: number;
+  days_pnl: number;
+  sector: string;
+  risk_tag: "Low" | "Medium" | "High" | "Unknown";
+  buy_time: string;
+  day_high: number | null;
+  day_low: number | null;
+  fifty_two_high: number | null;
+  fifty_two_low: number | null;
+  estimated_annual_dividend: number;
+}
+
+export interface SectorAllocation {
+  sector: string;
+  value: number;
+  weight_pct: number;
+}
+
+export interface PortfolioSummary {
+  total_invested: number;
+  current_value: number;
+  total_pnl: number;
+  total_return_pct: number;
+  days_pnl: number;
+  diversification_score: number;
+  estimated_annual_dividends: number;
+  num_holdings: number;
+  sector_allocation: SectorAllocation[];
+}
+
+export interface PortfolioDetail {
+  id: number;
+  name: string;
+  description: string;
+  created_at: string;
+  summary: PortfolioSummary;
+  holdings: EnrichedHolding[];
+}
+
 export interface Portfolio {
   id: number;
   user: number;
@@ -48,6 +97,13 @@ export async function getPortfolios(): Promise<Portfolio[]> {
     headers: getAuthHeaders(),
   });
   return handleResponse<Portfolio[]>(res);
+}
+
+export async function getPortfolioDetail(id: number): Promise<PortfolioDetail> {
+  const res = await fetch(`${API_BASE}/portfolio/${id}/detail/`, {
+    headers: getAuthHeaders(),
+  });
+  return handleResponse<PortfolioDetail>(res);
 }
 
 export async function createPortfolio(name: string, description = ""): Promise<Portfolio> {

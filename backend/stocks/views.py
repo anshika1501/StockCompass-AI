@@ -2107,6 +2107,170 @@ class GetPortfoliosView(APIView):
         return Response(serializer.data)
 
 
+class PortfolioDetailView(APIView):
+    """
+    GET /api/portfolio/<id>/detail/
+    Returns an enriched portfolio with live prices, P&L, analytics.
+    """
+    def get(self, request, id):
+        import yfinance as yf
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        user = get_user_from_request(request)
+        if not user:
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+
+        portfolio = Portfolio.objects.filter(id=id, user=user).first()
+        if not portfolio:
+            return Response({"error": "Portfolio not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        holdings = list(portfolio.holdings.all())
+        unique_tickers = list({h.ticker for h in holdings})
+
+        # ── fetch live prices in parallel ──────────────────────────────
+        def _fetch_price(ticker):
+            try:
+                info = yf.Ticker(ticker).info or {}
+                cp = (info.get("currentPrice") or info.get("regularMarketPrice")
+                      or info.get("previousClose") or 0)
+                prev = info.get("previousClose") or cp
+                day_high = info.get("dayHigh") or cp
+                day_low = info.get("dayLow") or cp
+                sector = info.get("sector", "")
+                mkt_cap = info.get("marketCap")
+                fifty_two_high = info.get("fiftyTwoWeekHigh", cp)
+                fifty_two_low = info.get("fiftyTwoWeekLow", cp)
+                div_yield = info.get("dividendYield") or 0  # e.g. 0.022 → 2.2%
+                return ticker, {
+                    "current_price": round(float(cp), 2),
+                    "prev_close": round(float(prev), 2),
+                    "day_high": round(float(day_high), 2),
+                    "day_low": round(float(day_low), 2),
+                    "sector": sector,
+                    "market_cap": mkt_cap,
+                    "fifty_two_high": round(float(fifty_two_high), 2),
+                    "fifty_two_low": round(float(fifty_two_low), 2),
+                    "dividend_yield": round(float(div_yield), 4),
+                }
+            except Exception as exc:
+                logger.warning(f"PortfolioDetail: could not fetch {ticker}: {exc}")
+                return ticker, None
+
+        price_map = {}
+        with ThreadPoolExecutor(max_workers=min(len(unique_tickers), 15)) as ex:
+            futures = {ex.submit(_fetch_price, t): t for t in unique_tickers}
+            for f in as_completed(futures, timeout=30):
+                try:
+                    t, data = f.result()
+                    if data:
+                        price_map[t] = data
+                except Exception:
+                    pass
+
+        # ── enrich holdings ────────────────────────────────────────────
+        def _risk_tag(ticker, live):
+            """Simple rule-based risk classification."""
+            if not live:
+                return "Unknown"
+            cp = live["current_price"]
+            low = live["fifty_two_low"]
+            high = live["fifty_two_high"]
+            if high == low or cp == 0:
+                return "Medium"
+            pos = (cp - low) / (high - low)
+            if pos < 0.30:
+                return "Low"
+            elif pos < 0.70:
+                return "Medium"
+            return "High"
+
+        total_invested = 0.0
+        total_current = 0.0
+        total_days_pnl = 0.0
+        total_est_dividends = 0.0
+        sectors_seen = {}
+
+        enriched = []
+        for h in holdings:
+            live = price_map.get(h.ticker)
+            invested = h.quantity * float(h.buy_price)
+            cp = live["current_price"] if live else float(h.buy_price)
+            current_val = h.quantity * cp
+            pnl = current_val - invested
+            pnl_pct = (pnl / invested * 100) if invested > 0 else 0
+
+            prev = live["prev_close"] if live else cp
+            days_pnl = h.quantity * (cp - prev)
+
+            div_yield = live["dividend_yield"] if live else 0
+            est_div = current_val * div_yield
+
+            sector = (live["sector"] if live else "") or "Other"
+            sectors_seen[sector] = sectors_seen.get(sector, 0) + current_val
+
+            total_invested += invested
+            total_current += current_val
+            total_days_pnl += days_pnl
+            total_est_dividends += est_div
+
+            enriched.append({
+                "id": h.id,
+                "ticker": h.ticker,
+                "company_name": h.company_name,
+                "quantity": h.quantity,
+                "buy_price": float(h.buy_price),
+                "current_price": cp,
+                "invested": round(invested, 2),
+                "current_value": round(current_val, 2),
+                "pnl": round(pnl, 2),
+                "pnl_pct": round(pnl_pct, 2),
+                "days_pnl": round(days_pnl, 2),
+                "sector": sector,
+                "risk_tag": _risk_tag(h.ticker, live),
+                "buy_time": h.buy_time.isoformat(),
+                "day_high": live["day_high"] if live else None,
+                "day_low": live["day_low"] if live else None,
+                "fifty_two_high": live["fifty_two_high"] if live else None,
+                "fifty_two_low": live["fifty_two_low"] if live else None,
+                "estimated_annual_dividend": round(est_div, 2),
+            })
+
+        # ── diversification score (Herfindahl-based, 0–100) ───────────
+        if total_current > 0 and len(sectors_seen) > 0:
+            weights = [v / total_current for v in sectors_seen.values()]
+            hhi = sum(w ** 2 for w in weights)
+            diversification_score = round((1 - hhi) * 100, 1)
+        else:
+            diversification_score = 0.0
+
+        total_pnl = total_current - total_invested
+        total_return_pct = (total_pnl / total_invested * 100) if total_invested > 0 else 0
+
+        return Response({
+            "id": portfolio.id,
+            "name": portfolio.name,
+            "description": portfolio.description or "",
+            "created_at": portfolio.created_at.isoformat(),
+            "summary": {
+                "total_invested": round(total_invested, 2),
+                "current_value": round(total_current, 2),
+                "total_pnl": round(total_pnl, 2),
+                "total_return_pct": round(total_return_pct, 2),
+                "days_pnl": round(total_days_pnl, 2),
+                "diversification_score": diversification_score,
+                "estimated_annual_dividends": round(total_est_dividends, 2),
+                "num_holdings": len(holdings),
+                "sector_allocation": [
+                    {"sector": s, "value": round(v, 2),
+                     "weight_pct": round(v / total_current * 100, 1) if total_current > 0 else 0}
+                    for s, v in sectors_seen.items()
+                ],
+            },
+            "holdings": enriched,
+        })
+
+
+
 class AddHoldingView(APIView):
     def post(self, request):
         user = get_user_from_request(request)
