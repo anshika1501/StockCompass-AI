@@ -353,7 +353,9 @@ def run_portfolio_analysis(sector_slug):
     Run analysis on all stocks in a sector/portfolio.
     Returns PE ratio, discount level, opportunity score, and correlation data.
     """
-    from .models import Stock, StockCategory
+    from .models import Stock, StockCategory, SentimentArticle
+    from django.db.models import Avg, Count
+    from django.utils import timezone
 
     try:
         category = StockCategory.objects.get(slug=sector_slug)
@@ -367,6 +369,20 @@ def run_portfolio_analysis(sector_slug):
     stocks = Stock.objects.filter(category=category, is_active=True)
     if not stocks.exists():
         return {"stocks": [], "correlation": {}}
+
+    # Fetch sentiment scores for all stocks in this sector (today or recent)
+    sentiment_agg = (
+        SentimentArticle.objects
+        .filter(sector=category.name)
+        .values('ticker')
+        .annotate(avg_score=Avg('compound_score'))
+    )
+    sentiment_map = {row['ticker']: row['avg_score'] for row in sentiment_agg}
+    
+    # Calculate sector average as fallback
+    sector_avg = SentimentArticle.objects.filter(sector=category.name).aggregate(Avg('compound_score'))['compound_score__avg']
+    if sector_avg is None:
+        sector_avg = 0.0
 
     stocks_data = []
     for s in stocks:
@@ -401,6 +417,20 @@ def run_portfolio_analysis(sector_slug):
         else:
             recommendation = 'HOLD'
 
+        # Sentiment score from map, fallback to sector average
+        raw_sentiment = sentiment_map.get(s.symbol)
+        is_fallback = False
+        if raw_sentiment is None:
+            raw_sentiment = sector_avg
+            is_fallback = True
+            
+        sentiment_score = round(float(raw_sentiment), 4)
+        sentiment_label = 'NEUTRAL'
+        if sentiment_score >= 0.05:
+            sentiment_label = 'BULLISH'
+        elif sentiment_score <= -0.05:
+            sentiment_label = 'BEARISH'
+
         stocks_data.append({
             "symbol": s.symbol,
             "company_name": s.name,
@@ -416,6 +446,9 @@ def run_portfolio_analysis(sector_slug):
             "discount_level": discount,
             "opportunity_score": score,
             "sector": s.sector or '',
+            "sentiment_score": sentiment_score,
+            "sentiment_label": sentiment_label,
+            "sentiment_is_fallback": is_fallback,
         })
 
     # Build correlation matrix from numeric fields

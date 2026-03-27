@@ -45,6 +45,7 @@ function MyPortfolioContent() {
   const addTickerParam = searchParams.get("addTicker");
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const [hasMounted, setHasMounted] = useState(false);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -81,6 +82,7 @@ function MyPortfolioContent() {
   const [isSavingPortfolioMeta, setIsSavingPortfolioMeta] = useState(false);
 
   useEffect(() => {
+    setHasMounted(true);
     setIsLoggedIn(!!getToken());
   }, []);
 
@@ -321,7 +323,13 @@ function MyPortfolioContent() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  if (isLoggedIn === null) return null;
+  if (!hasMounted) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-2 border-slate-200 border-t-[#4F8DF7]" />
+      </div>
+    );
+  }
 
   if (!isLoggedIn) {
     return (

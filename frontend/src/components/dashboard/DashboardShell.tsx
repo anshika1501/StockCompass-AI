@@ -6,7 +6,7 @@ import DashboardTopBar from "./DashboardTopBar";
 export default function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-white">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-slate-800 bg-slate-950 md:block">
+      <aside className="fixed inset-y-0 left-0 z-50 hidden w-72 border-r border-slate-800 bg-slate-950 md:block">
         <SidebarNav />
       </aside>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   LayoutDashboard,
@@ -38,8 +39,22 @@ const aiToolItems: SidebarItem[] = [
 ];
 
 export default function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  if (!hasMounted) {
+    return (
+      <aside className="flex h-full w-full flex-col bg-slate-950 text-slate-100 animate-pulse">
+        <div className="h-full w-full bg-slate-900/50" />
+      </aside>
+    );
+  }
+
   return (
-    <aside className="flex h-full w-full flex-col bg-slate-950 text-slate-100">
+    <aside className="flex h-full w-full flex-col bg-slate-950 text-slate-100 pointer-events-auto">
       <div className="border-b border-slate-800 px-5 py-5">
         <Link href="/dashboard" onClick={onNavigate} className="group flex items-center gap-3">
           <div className="rounded-lg bg-blue-500/20 p-2 ring-1 ring-blue-400/30 transition-colors group-hover:bg-blue-500/30">

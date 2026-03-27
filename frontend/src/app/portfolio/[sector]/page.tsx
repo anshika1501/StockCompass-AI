@@ -1,12 +1,10 @@
 
 import { notFound } from "next/navigation";
 import Navigation from "@/components/Navigation";
-import StockCard from "@/components/StockCard";
 import PortfolioAnalysis from "@/components/PortfolioAnalysis";
 import { getStocksBySector } from "@/lib/stock-data";
-import { ChevronLeft, Filter, LayoutGrid } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +22,7 @@ export default async function SectorPage({ params }: { params: { sector: string 
     notFound();
   }
 
-  const { sector, stocks } = sectorData;
+  const { sector } = sectorData;
 
   return (
     <div className="min-h-screen bg-white">
@@ -44,30 +42,10 @@ export default async function SectorPage({ params }: { params: { sector: string 
             </div>
             <p className="text-xl text-[#1F2937] font-normal opacity-85 leading-relaxed">{sector.description}</p>
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" size="lg" className="gap-2 bg-white border-gray-200 text-[#000000] font-semibold text-xs uppercase tracking-[0.12em] hover:bg-gray-50 rounded-xl px-6 h-12 shadow-sm">
-              <Filter className="h-4 w-4" /> Refine
-            </Button>
-            <Button variant="outline" size="lg" className="gap-2 bg-white border-gray-200 text-[#000000] font-semibold text-xs uppercase tracking-[0.12em] hover:bg-gray-50 rounded-xl px-6 h-12 shadow-sm">
-              <LayoutGrid className="h-4 w-4" /> Layout
-            </Button>
-          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-20">
-          {stocks.map((stock) => (
-            <StockCard key={stock.ticker} stock={stock} sectorSlug={sectorId} />
-          ))}
-        </div>
-
-        {stocks.length === 0 && (
-          <div className="text-center py-32 bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200">
-            <p className="text-[#1F2937] font-semibold uppercase tracking-[0.12em] text-sm opacity-50">No assets detected in this sector.</p>
-          </div>
-        )}
-
-        {/* Portfolio Analysis Section */}
-        <div className="mt-24 border-t border-gray-100 pt-20">
+        {/* Sectors Analytics Table Section */}
+        <div className="mt-8">
            <PortfolioAnalysis sectorSlug={sectorId} />
         </div>
       </main>

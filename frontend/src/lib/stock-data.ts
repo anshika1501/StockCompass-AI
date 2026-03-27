@@ -18,6 +18,9 @@ export interface Stock {
   sector: string;
   industry: string;
   description: string;
+  sentiment_score?: number | null;
+  sentiment_label?: 'BULLISH' | 'NEUTRAL' | 'BEARISH' | null;
+  sentiment_is_fallback?: boolean;
   website?: string;
   city?: string;
   country?: string;
@@ -137,6 +140,9 @@ export interface PortfolioAnalysisStock {
   discount_level: string;
   opportunity_score: number;
   sector: string;
+  sentiment_score?: number | null;
+  sentiment_label?: 'BULLISH' | 'NEUTRAL' | 'BEARISH' | null;
+  sentiment_is_fallback?: boolean;
 }
 
 export interface PortfolioAnalysisData {

@@ -56,8 +56,39 @@ def all_stocks(request):
     GET /api/stocks/
     Returns all active stocks in frontend Stock interface shape.
     """
+    from .models import SentimentArticle
+    from django.db.models import Avg
+
     stocks = Stock.objects.filter(is_active=True)
-    data = [StockDataService.get_stock_as_frontend_shape(s) for s in stocks]
+    
+    # Fetch sentiment scores in bulk
+    sentiment_agg = (
+        SentimentArticle.objects
+        .values('ticker')
+        .annotate(avg_score=Avg('compound_score'))
+    )
+    sentiment_map = {row['ticker']: row['avg_score'] for row in sentiment_agg}
+    
+    # Global average as absolute fallback
+    global_avg = SentimentArticle.objects.aggregate(Avg('compound_score'))['compound_score__avg'] or 0.0
+
+    data = []
+    for s in stocks:
+        stock_data = StockDataService.get_stock_as_frontend_shape(s)
+        
+        # Add sentiment
+        raw_score = sentiment_map.get(s.symbol)
+        is_fallback = False
+        if raw_score is None:
+            raw_score = global_avg
+            is_fallback = True
+            
+        stock_data['sentiment_score'] = round(float(raw_score), 4)
+        stock_data['sentiment_label'] = 'BULLISH' if raw_score >= 0.05 else ('BEARISH' if raw_score <= -0.05 else 'NEUTRAL')
+        stock_data['sentiment_is_fallback'] = is_fallback
+            
+        data.append(stock_data)
+        
     return Response(data)
 
 
@@ -262,6 +293,31 @@ def nifty50_stocks(request):
             # yfinance unavailable but we have cached data — return stale rather than nothing
             result.append(StockDataService.get_stock_as_frontend_shape(stale_db_map[sym]))
 
+    # Inject sentiment in bulk
+    from .models import SentimentArticle
+    from django.db.models import Avg
+    sentiment_agg = (
+        SentimentArticle.objects
+        .filter(ticker__in=NIFTY_50_SYMBOLS)
+        .values('ticker')
+        .annotate(avg_score=Avg('compound_score'))
+    )
+    sentiment_map = {row['ticker']: row['avg_score'] for row in sentiment_agg}
+    
+    # Nifty 50 average fallback
+    nifty_avg = SentimentArticle.objects.filter(ticker__in=NIFTY_50_SYMBOLS).aggregate(Avg('compound_score'))['compound_score__avg'] or 0.0
+
+    for stock_data in result:
+        raw_score = sentiment_map.get(stock_data['ticker'])
+        is_fallback = False
+        if raw_score is None:
+            raw_score = nifty_avg
+            is_fallback = True
+            
+        stock_data['sentiment_score'] = round(float(raw_score), 4)
+        stock_data['sentiment_label'] = 'BULLISH' if raw_score >= 0.05 else ('BEARISH' if raw_score <= -0.05 else 'NEUTRAL')
+        stock_data['sentiment_is_fallback'] = is_fallback
+
     # Cache the result for subsequent fast loads
     if result:
         cache.set(CACHE_KEY, result, CACHE_TTL)
@@ -286,7 +342,39 @@ def stocks_by_sector(request, sector_slug):
             return Response({'error': 'Sector not found'}, status=status.HTTP_404_NOT_FOUND)
 
     stocks = Stock.objects.filter(category=category, is_active=True)
-    data = [StockDataService.get_stock_as_frontend_shape(s) for s in stocks]
+    
+    # Inject sentiment in bulk
+    from .models import SentimentArticle
+    from django.db.models import Avg
+    sentiment_agg = (
+        SentimentArticle.objects
+        .filter(sector=category.name)
+        .values('ticker')
+        .annotate(avg_score=Avg('compound_score'))
+    )
+    sentiment_map = {row['ticker']: row['avg_score'] for row in sentiment_agg}
+    
+    # Sector average fallback
+    sector_avg = SentimentArticle.objects.filter(sector=category.name).aggregate(Avg('compound_score'))['compound_score__avg']
+    if sector_avg is None:
+        sector_avg = 0.0
+
+    data = []
+    for s in stocks:
+        stock_data = StockDataService.get_stock_as_frontend_shape(s)
+        
+        # Sentiment logic with fallback
+        raw_score = sentiment_map.get(s.symbol)
+        is_fallback = False
+        if raw_score is None:
+            raw_score = sector_avg
+            is_fallback = True
+            
+        stock_data['sentiment_score'] = round(float(raw_score), 4)
+        stock_data['sentiment_label'] = 'BULLISH' if raw_score >= 0.05 else ('BEARISH' if raw_score <= -0.05 else 'NEUTRAL')
+        stock_data['sentiment_is_fallback'] = is_fallback
+        
+        data.append(stock_data)
 
     return Response({
         'sector': {

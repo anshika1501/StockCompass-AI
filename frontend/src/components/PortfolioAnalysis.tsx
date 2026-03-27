@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
     Loader2, BrainCircuit, AlertCircle,
-    PlusCircle, CheckCircle2, GitCompare, Star, Layers,
+    PlusCircle, CheckCircle2, GitCompare, Star, Layers, BriefcaseBusiness,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCompareStocks } from "@/hooks/use-compare-stocks";
@@ -21,6 +22,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import OpportunityBadge from "@/components/OpportunityBadge";
 import { fetchPortfolioAnalysis, type PortfolioAnalysisData, type PortfolioAnalysisStock } from "@/lib/stock-data";
+import { getPortfolios, addHolding, type Portfolio } from "@/lib/portfolio-data";
+import { useToast } from "@/hooks/use-toast";
+
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -148,9 +158,13 @@ const ClusterDot = (props: unknown) => {
     const { cx = 0, cy = 0, payload, fill } = props as {
         cx?: number; cy?: number; payload?: ClusterPt; fill?: string;
     };
+    const router = useRouter();
     if (!payload) return null;
     return (
-        <g>
+        <g
+            className="cursor-pointer"
+            onClick={() => router.push(`/stock/${payload.symbol}`)}
+        >
             <circle cx={cx} cy={cy} r={5} fill={fill} fillOpacity={0.9} stroke="#fff" strokeWidth={1.5} />
             <text x={cx} y={cy - 8} textAnchor="middle" fontSize={7} fontWeight={700}
                 fill="#1e293b" style={{ pointerEvents: "none", userSelect: "none" }}>
@@ -297,6 +311,62 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
     const [clusterK, setClusterK] = useState(3);
     const { compareList, addToCompare, removeFromCompare, isInCompare } = useCompareStocks();
     const router = useRouter();
+    const { toast } = useToast();
+    const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+    const [isAdding, setIsAdding] = useState<string | null>(null);
+    const [hasMounted, setHasMounted] = useState(false);
+
+    useEffect(() => {
+        setHasMounted(true);
+        const loadPortfolios = async () => {
+            try {
+                const list = await getPortfolios();
+                setPortfolios(list);
+            } catch (err) {
+                console.error("Failed to load portfolios", err);
+            }
+        };
+        loadPortfolios();
+    }, []);
+
+    const handleQuickAdd = async (stock: PortfolioAnalysisStock, portfolioId?: string, portfolioName?: string) => {
+        if (portfolios.length === 0) {
+            toast({
+                title: "No portfolios found",
+                description: "Create a portfolio first to add stocks.",
+                variant: "destructive",
+            });
+            router.push("/my-portfolio");
+            return;
+        }
+
+        const targetPortfolioId = portfolioId || portfolios[0].id;
+        const targetPortfolioName = portfolioName || portfolios[0].name;
+        setIsAdding(stock.symbol);
+
+        try {
+            await addHolding({
+                portfolio: targetPortfolioId,
+                ticker: stock.symbol,
+                company_name: stock.company_name,
+                quantity: 1,
+                buy_price: stock.current_price || 0,
+            });
+            
+            toast({
+                title: "Success",
+                description: `${stock.symbol} added to ${targetPortfolioName}`,
+            });
+        } catch (err) {
+            toast({
+                title: "Error",
+                description: "Failed to add stock to portfolio.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsAdding(null);
+        }
+    };
 
     useEffect(() => {
         let active = true;
@@ -400,7 +470,7 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                 <div className="bg-[#4F8DF7] p-2 rounded-xl shadow-lg shadow-[#4F8DF7]/15">
                                     <BrainCircuit size={20} className="text-white" />
                                 </div>
-                                Portfolio Analytics
+                                Sectors Analytics
                             </CardTitle>
                             <p className="text-xs font-medium text-gray-500 uppercase tracking-[0.12em] mt-1.5 ml-11">Quantitative metrics and opportunity evaluation</p>
                         </div>
@@ -427,12 +497,17 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                     <th className="px-6 py-4 text-right text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Expected Value</th>
                                     <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Signal</th>
                                     <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Opp. Score</th>
+                                    <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Sentiment</th>
                                     <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {stocks.map((stock) => (
-                                    <tr key={stock.symbol} className="hover:bg-blue-50/20 transition-colors group">
+                                    <tr
+                                        key={stock.symbol}
+                                        onClick={() => router.push(`/stock/${stock.symbol}?from=${sectorSlug}`)}
+                                        className="hover:bg-blue-50/20 transition-colors group cursor-pointer"
+                                    >
                                         <td className="px-6 py-5 whitespace-nowrap">
                                             <div className="flex flex-col">
                                                 <span className="font-bold text-[#4F8DF7] text-sm tracking-tight">{stock.symbol}</span>
@@ -471,27 +546,103 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                                 {stock.opportunity_score ?? '-'}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-5 text-center whitespace-nowrap">
-                                            <button
-                                                onClick={() => {
-                                                    if (isInCompare(stock.symbol)) {
-                                                        removeFromCompare(stock.symbol);
-                                                    } else {
-                                                        addToCompare({ symbol: stock.symbol, name: stock.company_name });
-                                                    }
-                                                }}
-                                                className={cn(
-                                                    'flex items-center gap-2 text-[10px] font-semibold px-4 py-2 rounded-xl transition-all mx-auto uppercase tracking-[0.12em] border',
-                                                    isInCompare(stock.symbol)
-                                                        ? 'text-white bg-[#4F8DF7] border-[#4F8DF7] shadow-lg shadow-[#4F8DF7]/20'
-                                                        : 'text-gray-400 border-gray-100 bg-white hover:border-[#4F8DF7] hover:text-[#4F8DF7] shadow-sm'
+                                        <td className="px-6 py-5 text-center">
+                                            {stock.sentiment_score !== undefined && stock.sentiment_score !== null ? (
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <div className="flex items-center gap-1">
+                                                        <span className={cn(
+                                                            "text-[10px] font-bold px-2 py-0.5 rounded-md border",
+                                                            stock.sentiment_label === 'BULLISH' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                                                            stock.sentiment_label === 'BEARISH' ? "bg-rose-50 text-rose-700 border-rose-100" :
+                                                            "bg-gray-50 text-gray-600 border-gray-100"
+                                                        )}>
+                                                            {stock.sentiment_label}
+                                                        </span>
+                                                        {stock.sentiment_is_fallback && (
+                                                            <span className="text-[9px] font-medium text-slate-400 cursor-help" title="Sector Average (No stock-specific news today)">
+                                                                (S)
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-[11px] font-bold text-slate-500">
+                                                        {stock.sentiment_score > 0 ? '+' : ''}{stock.sentiment_score.toFixed(3)}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-[11px] font-medium text-gray-400">N/A</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-5 text-center whitespace-nowrap cursor-default" onClick={(e) => e.stopPropagation()}>
+                                            <div className="flex items-center justify-center gap-2 relative z-[100]">
+                                                {hasMounted ? (
+                                                    <>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (isInCompare(stock.symbol)) {
+                                                                    removeFromCompare(stock.symbol);
+                                                                } else {
+                                                                    addToCompare({ symbol: stock.symbol, name: stock.company_name });
+                                                                }
+                                                            }}
+                                                            className={cn(
+                                                                'flex items-center gap-2 text-[10px] font-semibold px-4 py-2 rounded-xl transition-all uppercase tracking-[0.12em] border cursor-pointer pointer-events-auto relative z-[101]',
+                                                                isInCompare(stock.symbol)
+                                                                    ? 'text-white bg-[#4F8DF7] border-[#4F8DF7] shadow-lg shadow-[#4F8DF7]/20'
+                                                                    : 'text-gray-400 border-gray-100 bg-white hover:border-[#4F8DF7] hover:text-[#4F8DF7] shadow-sm'
+                                                            )}
+                                                        >
+                                                            {isInCompare(stock.symbol)
+                                                                ? <><CheckCircle2 size={13} /> Active</>
+                                                                : <><PlusCircle size={13} /> Compare</>
+                                                            }
+                                                        </button>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                                <button
+                                                                    disabled={isAdding === stock.symbol}
+                                                                    title="Add to Portfolio"
+                                                                    className={cn(
+                                                                        "flex items-center gap-2 text-[10px] font-bold px-4 py-2 rounded-xl transition-all uppercase tracking-[0.12em] shadow-sm cursor-pointer pointer-events-auto relative z-[101]",
+                                                                        isAdding === stock.symbol 
+                                                                            ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                                                                            : "bg-[#2563EB] text-white border-[#2563EB] hover:bg-[#1D4ED8] hover:shadow-md"
+                                                                    )}
+                                                                >
+                                                                    {isAdding === stock.symbol ? (
+                                                                        <Loader2 size={13} className="animate-spin" />
+                                                                    ) : (
+                                                                        <PlusCircle size={13} />
+                                                                    )}
+                                                                    ADD
+                                                                </button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end" className="w-48 bg-white border border-gray-100 shadow-xl rounded-xl p-1 z-[110]" onClick={(e) => e.stopPropagation()}>
+                                                                {portfolios.length > 0 ? (
+                                                                    portfolios.map((portfolio) => (
+                                                                        <DropdownMenuItem
+                                                                            key={portfolio.id}
+                                                                            className="flex items-center gap-2 px-3 py-2 text-[11px] font-bold text-gray-700 hover:bg-blue-50 hover:text-[#2563EB] rounded-lg cursor-pointer transition-colors uppercase tracking-wider"
+                                                                            onSelect={() => {
+                                                                                handleQuickAdd(stock, portfolio.id, portfolio.name);
+                                                                            }}
+                                                                        >
+                                                                            <BriefcaseBusiness size={14} className="opacity-60" />
+                                                                            {portfolio.name}
+                                                                        </DropdownMenuItem>
+                                                                    ))
+                                                                ) : (
+                                                                    <div className="px-3 py-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center">
+                                                                        No Portfolios
+                                                                    </div>
+                                                                )}
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </>
+                                                ) : (
+                                                    <div className="w-full h-8 bg-gray-50/50 rounded-xl animate-pulse" />
                                                 )}
-                                            >
-                                                {isInCompare(stock.symbol)
-                                                    ? <><CheckCircle2 size={13} /> Active</>
-                                                    : <><PlusCircle size={13} /> Compare</>
-                                                }
-                                            </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

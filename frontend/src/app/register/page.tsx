@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { AuthScreen } from "@/components/auth/AuthScreen";
+import ClientOnly from "@/components/ClientOnly";
 
 export default function RegisterPage() {
   return (
@@ -10,7 +11,9 @@ export default function RegisterPage() {
         </div>
       }
     >
-      <AuthScreen emphasizeRegister />
+      <ClientOnly>
+        <AuthScreen emphasizeRegister />
+      </ClientOnly>
     </Suspense>
   );
 }

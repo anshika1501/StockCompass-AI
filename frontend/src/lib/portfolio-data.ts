@@ -84,6 +84,10 @@ function getAuthHeaders(): Record<string, string> {
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
+    // Provide clearer error messages for auth / permission issues so UI can guide the user.
+    if (res.status === 401) throw new Error('Authentication required. Please sign in.');
+    if (res.status === 403) throw new Error('Permission denied.');
+
     let msg = `Error ${res.status}`;
     try {
       const data = await res.json();

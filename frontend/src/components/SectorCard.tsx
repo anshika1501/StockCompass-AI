@@ -23,8 +23,8 @@ export default function SectorCard({ sector }: { sector: Sector }) {
   const imageSrc = sector.image && sector.image.trim().length > 0 ? sector.image : "/sector-placeholder.svg";
 
   return (
-    <Link href={`/portfolio/${sector.id}`}>
-      <Card className="group overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-200 bg-white rounded-2xl">
+    <Link href={`/portfolio/${sector.id}`} className="block">
+      <Card className="group overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-200 bg-white rounded-2xl cursor-pointer relative z-10">
         <div className="relative h-44 w-full overflow-hidden">
           <Image
             src={imageSrc}

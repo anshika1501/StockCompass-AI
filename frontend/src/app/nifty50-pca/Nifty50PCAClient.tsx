@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
     ScatterChart,
     Scatter,
@@ -52,9 +53,13 @@ const CustomDot = (props: {
     cx?: number; cy?: number; payload?: Nifty50PCAPoint; fill?: string;
 }) => {
     const { cx = 0, cy = 0, payload, fill } = props;
+    const router = useRouter();
     if (!payload) return null;
     return (
-        <g>
+        <g
+            className="cursor-pointer"
+            onClick={() => router.push(`/stock/${payload.symbol}`)}
+        >
             <circle cx={cx} cy={cy} r={7} fill={fill} fillOpacity={0.85} stroke="#fff" strokeWidth={1.5} />
             <text
                 x={cx}
@@ -199,6 +204,7 @@ type DrillPoint = Nifty50PCAPoint & { pe_val: number; disc_val: number; subClust
 // ─── Main component ────────────────────────────────────────────────────────
 
 export default function Nifty50PCAClient() {
+    const router = useRouter();
     const [data, setData] = useState<Nifty50PCAResult | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -691,7 +697,11 @@ export default function Nifty50PCAClient() {
                                             </thead>
                                             <tbody>
                                                 {drillChartPoints.map((p) => (
-                                                    <tr key={p.symbol} className="border-b border-border/30 hover:bg-secondary/40 transition-colors">
+                                                    <tr
+                                                        key={p.symbol}
+                                                        onClick={() => router.push(`/stock/${p.symbol}`)}
+                                                        className="border-b border-border/30 hover:bg-secondary/40 transition-colors cursor-pointer"
+                                                    >
                                                         <td className="py-1.5 font-mono font-bold text-left">
                                                             <div className="flex items-center gap-1.5">
                                                                 <div className="w-2 h-2 rounded-full shrink-0" style={{ background: CLUSTER_COLORS[p.subCluster] }} />
@@ -878,8 +888,9 @@ export default function Nifty50PCAClient() {
                                         return (
                                             <tr
                                                 key={p.symbol}
+                                                onClick={() => router.push(`/stock/${p.symbol}`)}
                                                 className={cn(
-                                                    "border-b border-border/30 hover:bg-secondary/40 transition-colors",
+                                                    "border-b border-border/30 hover:bg-secondary/40 transition-colors cursor-pointer",
                                                     hoveredCluster === p.cluster ? "bg-secondary/30" : "",
                                                     isBest ? "bg-amber-50/50" : ""
                                                 )}
