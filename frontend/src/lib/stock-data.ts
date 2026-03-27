@@ -468,10 +468,16 @@ export async function fetchAssetForecast(ticker: string, model: string, horizon:
   return apiFetch<AssetForecast>(`/forecast/?ticker=${encodeURIComponent(ticker)}&model=${encodeURIComponent(model)}&horizon=${encodeURIComponent(horizon)}`);
 }
 
+function getChatAuthHeaders(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const token = localStorage.getItem("stock_compass_token");
+  return token ? { Authorization: `Token ${token}` } : {};
+}
+
 export async function chatWithStocks(query: string, model?: string, embedModel?: string, baseUrl?: string): Promise<ChatResponse> {
   const res = await fetch(`${API_BASE}/chatbot/`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getChatAuthHeaders() },
     body: JSON.stringify({ query, model, embed_model: embedModel, base_url: baseUrl }),
     cache: 'no-store',
   });

@@ -1,3 +1,5 @@
+from typing import Any, Dict, Optional
+
 from rest_framework import status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
@@ -26,8 +28,253 @@ from .analytics import (
 import logging
 import pandas as pd
 import numpy as np
+import re
 
 logger = logging.getLogger(__name__)
+
+
+def _detect_portfolio_action(question: str) -> Optional[Dict[str, Any]]:
+    """
+    Lightweight intent detector for portfolio CRUD expressed in plain language.
+    Returns None when no action is recognized.
+    """
+    if not question:
+        return None
+
+    q = question.strip()
+    q_lower = q.lower()
+
+    # List portfolios
+    if re.search(r"\b(list|show|see)\s+(my\s+)?portfolios\b", q_lower):
+        return {"intent": "list_portfolios"}
+
+    # Create portfolio
+    m = re.search(
+        r"\b(create|make|open)\s+(?:a\s+)?portfolio(?:\s+(?:named|called)\s+(?P<name>[A-Za-z0-9 _\-]{2,60}))?",
+        q,
+        flags=re.IGNORECASE,
+    )
+    if m:
+        name = (m.group("name") or "").strip(" \"'") if m.group("name") else None
+        return {"intent": "create_portfolio", "name": name}
+
+    # Rename portfolio
+    m = re.search(
+        r"\brename\s+portfolio\s+(?P<old>[A-Za-z0-9 _\-]{2,60})\s+(?:to|as)\s+(?P<new>[A-Za-z0-9 _\-]{2,60})",
+        q,
+        flags=re.IGNORECASE,
+    )
+    if m:
+        return {
+            "intent": "rename_portfolio",
+            "old": m.group("old").strip(" \"'"),
+            "new": m.group("new").strip(" \"'"),
+        }
+
+    # Delete portfolio
+    m = re.search(
+        r"\b(delete|remove|drop)\s+portfolio\s+(?P<name>[A-Za-z0-9 _\-]{1,60})",
+        q,
+        flags=re.IGNORECASE,
+    )
+    if m:
+        return {"intent": "delete_portfolio", "name": m.group("name").strip(" \"'")}
+
+    m = re.search(
+        r"\b(delete|remove|drop)\s+(?:the\s+|my\s+)?(?P<name>[A-Za-z0-9 _\-]{1,60})\s+(?:portfolio|book)\b",
+        q,
+        flags=re.IGNORECASE,
+    )
+    if m:
+        return {"intent": "delete_portfolio", "name": m.group("name").strip(" \"'")}
+
+    # Add holding
+    m = re.search(
+        r"\badd\s+(?P<qty>\d+(?:\.\d+)?)?\s*(shares|units)?\s*(of\s+)?(?P<ticker>[A-Za-z0-9.\-]{1,10})",
+        q,
+        flags=re.IGNORECASE,
+    )
+    if m:
+        price_match = re.search(r"at\s+(?P<price>\d+(?:\.\d+)?)", q, flags=re.IGNORECASE)
+        portfolio_match = re.search(
+            r"(?:to|into|in)\s+(?:portfolio|book)\s+(?P<portfolio>[A-Za-z0-9 _\-]{1,60})",
+            q,
+            flags=re.IGNORECASE,
+        )
+        return {
+            "intent": "add_holding",
+            "ticker": m.group("ticker").upper(),
+            "qty": m.group("qty"),
+            "price": price_match.group("price") if price_match else None,
+            "portfolio": portfolio_match.group("portfolio").strip(" \"'") if portfolio_match else None,
+        }
+
+    # Delete holding
+    m = re.search(
+        r"\b(remove|delete)\s+(?P<ticker>[A-Za-z0-9.\-]{1,10}).*(holding|position)?",
+        q,
+        flags=re.IGNORECASE,
+    )
+    if m:
+        portfolio_match = re.search(
+            r"(?:from|in)\s+(?:portfolio|book)\s+(?P<portfolio>[A-Za-z0-9 _\-]{1,60})",
+            q,
+            flags=re.IGNORECASE,
+        )
+        return {
+            "intent": "delete_holding",
+            "ticker": m.group("ticker").upper(),
+            "portfolio": portfolio_match.group("portfolio").strip(" \"'") if portfolio_match else None,
+        }
+
+    return None
+
+
+def _execute_portfolio_action(action: Dict[str, Any], request):
+    """Perform a portfolio CRUD action. Returns a DRF Response."""
+    user = _get_user_from_request(request)
+    if user is None:
+        return Response(
+            {'error': 'Authentication required. Please sign in again.'},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    intent = action.get("intent")
+
+    if intent == "list_portfolios":
+        portfolios = Portfolio.objects.filter(user=user).prefetch_related("holdings")
+        if not portfolios.exists():
+            return Response(
+                {"answer": "You don’t have any portfolios yet. Say “create portfolio called Growth” to add one.", "sources": []}
+            )
+        lines = []
+        for p in portfolios:
+            lines.append(
+                f"- {p.name} — {len(p.holdings.all())} holdings"
+                + (f" — {p.description}" if p.description else "")
+            )
+        return Response({"answer": "Here are your portfolios:\n" + "\n".join(lines), "sources": []})
+
+    if intent == "create_portfolio":
+        name = (action.get("name") or "").strip()
+        if not name:
+            return Response(
+                {"error": "Please provide a portfolio name, e.g., “create portfolio called Growth”."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if Portfolio.objects.filter(user=user, name__iexact=name).exists():
+            return Response(
+                {"answer": f'A portfolio named "{name}" already exists. Choose another name or say “rename portfolio {name} to …”.', "sources": []},
+                status=status.HTTP_200_OK,
+            )
+        portfolio = Portfolio.objects.create(user=user, name=name, description="")
+        return Response(
+            {"answer": f'Created portfolio "{portfolio.name}".', "sources": [], "action": {"created_portfolio_id": portfolio.id}},
+            status=status.HTTP_201_CREATED,
+        )
+
+    if intent == "rename_portfolio":
+        old = (action.get("old") or "").strip(" \"'.:,")
+        new = (action.get("new") or "").strip(" \"'.:,")
+        if not old or not new:
+            return Response({"error": "Please provide both the current and new name."}, status=status.HTTP_400_BAD_REQUEST)
+        portfolio = Portfolio.objects.filter(user=user, name__iexact=old).first()
+        if not portfolio:
+            return Response({"error": f'No portfolio found named "{old}".'}, status=status.HTTP_404_NOT_FOUND)
+        portfolio.name = new
+        portfolio.save()
+        return Response({"answer": f'Renamed portfolio to "{new}".', "sources": []})
+
+    if intent == "delete_portfolio":
+        name = (action.get("name") or "").strip(" \"'.:,")
+        if not name:
+            return Response({"error": "Please specify which portfolio to delete."}, status=status.HTTP_400_BAD_REQUEST)
+        portfolio = Portfolio.objects.filter(user=user, name__iexact=name).first()
+        if not portfolio:
+            return Response({"error": f'No portfolio found named "{name}".'}, status=status.HTTP_404_NOT_FOUND)
+        portfolio.delete()
+        return Response({"answer": f'Deleted portfolio "{name}" and its holdings.', "sources": []})
+
+    if intent == "add_holding":
+        ticker = action.get("ticker")
+        qty_raw = action.get("qty")
+        price_raw = action.get("price")
+        portfolio_name = action.get("portfolio")
+
+        portfolios = Portfolio.objects.filter(user=user)
+        if portfolio_name:
+            portfolio = portfolios.filter(name__iexact=portfolio_name).first()
+            if not portfolio:
+                return Response({"error": f'No portfolio found named "{portfolio_name}".'}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            if portfolios.count() == 1:
+                portfolio = portfolios.first()
+            else:
+                return Response(
+                    {"error": "Please specify which portfolio to use (e.g., “add 5 AAPL at 150 to portfolio Growth”)."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        try:
+            qty = int(float(qty_raw)) if qty_raw is not None else None
+        except (TypeError, ValueError):
+            qty = None
+
+        try:
+            price = float(price_raw) if price_raw is not None else None
+        except (TypeError, ValueError):
+            price = None
+
+        if not ticker or qty is None or price is None:
+            return Response(
+                {"error": "To add a holding, include ticker, quantity, and buy price. Example: add 10 AAPL at 150 to portfolio Growth."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if qty <= 0 or price <= 0:
+            return Response({"error": "Quantity and buy price must be greater than 0."}, status=status.HTTP_400_BAD_REQUEST)
+
+        holding = Holding.objects.create(
+            portfolio=portfolio,
+            ticker=ticker.upper(),
+            company_name=ticker.upper(),
+            quantity=qty,
+            buy_price=price,
+        )
+        return Response(
+            {
+                "answer": f'Added {qty} shares of {holding.ticker} at {price} to "{portfolio.name}".',
+                "sources": [],
+                "action": {"holding_id": holding.id, "portfolio_id": portfolio.id},
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    if intent == "delete_holding":
+        ticker = (action.get("ticker") or "").upper()
+        portfolio_name = action.get("portfolio")
+        portfolios = Portfolio.objects.filter(user=user)
+
+        if portfolio_name:
+            portfolio = portfolios.filter(name__iexact=portfolio_name).first()
+            if not portfolio:
+                return Response({"error": f'No portfolio found named "{portfolio_name}".'}, status=status.HTTP_404_NOT_FOUND)
+            holdings_qs = portfolio.holdings.filter(ticker__iexact=ticker)
+        else:
+            if portfolios.count() == 1:
+                portfolio = portfolios.first()
+                holdings_qs = portfolio.holdings.filter(ticker__iexact=ticker)
+            else:
+                holdings_qs = Holding.objects.filter(portfolio__user=user, ticker__iexact=ticker)
+
+        if not holdings_qs.exists():
+            return Response({"error": f'No holding found for {ticker}.'}, status=status.HTTP_404_NOT_FOUND)
+
+        count = holdings_qs.count()
+        holdings_qs.delete()
+        return Response({"answer": f"Removed {count} holding(s) for {ticker}.", "sources": []})
+
+    return Response({"error": "Unsupported action."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])
@@ -2455,6 +2702,11 @@ def chat_with_stocks(request):
     chat_model = request.data.get('model') if isinstance(request.data, dict) else None
     embed_model = request.data.get('embed_model') if isinstance(request.data, dict) else None
     base_url = request.data.get('base_url') if isinstance(request.data, dict) else None
+
+    # Try to handle portfolio CRUD via deterministic intent detection.
+    action = _detect_portfolio_action(str(question))
+    if action:
+        return _execute_portfolio_action(action, request)
 
     try:
         result = ChatAdvisorService().answer(
