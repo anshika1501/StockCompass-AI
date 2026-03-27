@@ -58,9 +58,9 @@ def _detect_portfolio_action(question: str) -> Optional[Dict[str, Any]]:
         name = (m.group("name") or "").strip(" \"'") if m.group("name") else None
         return {"intent": "create_portfolio", "name": name}
 
-    # Rename portfolio
+    # Rename portfolio (explicit old + new)
     m = re.search(
-        r"\brename\s+portfolio\s+(?P<old>[A-Za-z0-9 _\-]{2,60})\s+(?:to|as)\s+(?P<new>[A-Za-z0-9 _\-]{2,60})",
+        r"\b(rename|edit|change)\s+portfolio\s+(?P<old>[A-Za-z0-9 _\-]{2,60})\s+(?:name\s+)?(?:to|as)\s+(?P<new>[A-Za-z0-9 _\-]{2,60})",
         q,
         flags=re.IGNORECASE,
     )
@@ -68,6 +68,19 @@ def _detect_portfolio_action(question: str) -> Optional[Dict[str, Any]]:
         return {
             "intent": "rename_portfolio",
             "old": m.group("old").strip(" \"'"),
+            "new": m.group("new").strip(" \"'"),
+        }
+
+    # Rename portfolio (no old specified; e.g., "edit portfolio name to Growth Plus")
+    m = re.search(
+        r"\b(rename|edit|change)\s+portfolio\s+name\s+(?:to|as)\s+(?P<new>[A-Za-z0-9 _\-]{2,60})",
+        q,
+        flags=re.IGNORECASE,
+    )
+    if m:
+        return {
+            "intent": "rename_portfolio",
+            "old": None,
             "new": m.group("new").strip(" \"'"),
         }
 
@@ -176,11 +189,29 @@ def _execute_portfolio_action(action: Dict[str, Any], request):
     if intent == "rename_portfolio":
         old = (action.get("old") or "").strip(" \"'.:,")
         new = (action.get("new") or "").strip(" \"'.:,")
-        if not old or not new:
-            return Response({"error": "Please provide both the current and new name."}, status=status.HTTP_400_BAD_REQUEST)
-        portfolio = Portfolio.objects.filter(user=user, name__iexact=old).first()
-        if not portfolio:
-            return Response({"error": f'No portfolio found named "{old}".'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not new:
+            return Response({"error": "Please provide the new portfolio name."}, status=status.HTTP_400_BAD_REQUEST)
+
+        portfolio: Optional[Portfolio] = None
+
+        if old:
+            portfolio = Portfolio.objects.filter(user=user, name__iexact=old).first()
+            if not portfolio:
+                return Response({"error": f'No portfolio found named "{old}".'}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            user_portfolios = Portfolio.objects.filter(user=user)
+            if user_portfolios.count() == 1:
+                portfolio = user_portfolios.first()
+            elif user_portfolios.count() == 0:
+                return Response({"error": "You don't have any portfolios yet. Create one first."}, status=status.HTTP_404_NOT_FOUND)
+            else:
+                names = ", ".join(p.name for p in user_portfolios[:6])
+                return Response(
+                    {"error": f"Multiple portfolios found. Please specify which one to rename. Available: {names}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         portfolio.name = new
         portfolio.save()
         return Response({"answer": f'Renamed portfolio to "{new}".', "sources": []})
