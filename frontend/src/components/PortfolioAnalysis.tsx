@@ -490,14 +490,14 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                         <table className="min-w-full divide-y divide-gray-100">
                             <thead>
                                 <tr className="bg-blue-50/30">
-                                    <th className="px-6 py-4 text-left text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Symbol</th>
-                                    <th className="px-6 py-4 text-right text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Market Price</th>
-                                    <th className="px-6 py-4 text-right text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">PE Range (Min/Max)</th>
-                                    <th className="px-6 py-4 text-right text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Current PE</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Asset Information</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Current Price</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">52W High/Low</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">P/E Statistics (Avg/Current)</th>
                                     <th className="px-6 py-4 text-right text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Expected Value</th>
                                     <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Signal</th>
                                     <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Opp. Score</th>
-                                    <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Sentiment</th>
+                                    <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Sentiment AI</th>
                                     <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Actions</th>
                                 </tr>
                             </thead>
@@ -510,8 +510,11 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                     >
                                         <td className="px-6 py-5 whitespace-nowrap">
                                             <div className="flex flex-col">
-                                                <span className="font-bold text-[#4F8DF7] text-sm tracking-tight">{stock.symbol}</span>
-                                                <span className="text-[11px] font-medium text-gray-500 uppercase truncate max-w-[140px]">{stock.company_name}</span>
+                                                <div className="flex items-center gap-2">
+                                                  <span className="font-bold text-[#4F8DF7] text-sm tracking-tight">{stock.symbol}</span>
+                                                  <Badge variant="outline" className="text-[9px] px-1 py-0 border-gray-100 text-gray-400 font-semibold">{stock.sector || 'N/A'}</Badge>
+                                                </div>
+                                                <span className="text-[11px] font-medium text-gray-500 uppercase truncate max-w-[180px]">{stock.company_name}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 text-right font-bold text-[#000000] text-sm tracking-tight">
@@ -519,12 +522,18 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                         </td>
                                         <td className="px-6 py-5 text-right">
                                             <div className="flex flex-col items-end">
-                                                <span className="text-[11px] font-semibold text-emerald-600 tracking-tight">{stock.pe_min != null ? stock.pe_min.toFixed(2) : '-'}</span>
-                                                <span className="text-[11px] font-semibold text-rose-600 tracking-tight">{stock.pe_max != null ? stock.pe_max.toFixed(2) : '-'}</span>
+                                                <span className="text-[11px] font-semibold text-emerald-600 tracking-tight" title="52W High">↑ ₹{stock.max_price?.toLocaleString() ?? '-'}</span>
+                                                <span className="text-[11px] font-semibold text-rose-600 tracking-tight" title="52W Low">↓ ₹{stock.min_price?.toLocaleString() ?? '-'}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-5 text-right font-bold text-[#000000] text-sm tracking-tight">
-                                            {stock.pe_ratio != null ? stock.pe_ratio.toFixed(2) : '-'}
+                                        <td className="px-6 py-5 text-right">
+                                            <div className="flex flex-col items-end">
+                                              <span className="text-[11px] font-bold text-gray-900 tracking-tight">{stock.pe_ratio != null ? stock.pe_ratio.toFixed(2) : '-'}</span>
+                                              <div className="flex items-center gap-1">
+                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">AVG:</span>
+                                                <span className="text-[10px] font-semibold text-gray-500 tracking-tight">{stock.pe_avg != null ? stock.pe_avg.toFixed(2) : '-'}</span>
+                                              </div>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-5 text-right">
                                             <span className="font-bold text-[#000000] text-sm tracking-tight">

@@ -157,7 +157,8 @@ const LoadingBar = ({ value, color }: { value: number; color: string }) => (
 
 function simpleKMeans(points: number[][], k: number, maxIter = 150): number[] {
     const n = points.length;
-    if (n === 0 || k >= n) return points.map((_, i) => i);
+    if (n === 0) return [];
+    if (k >= n) return points.map((_, i) => i % k);
     // K-Means++ init
     const centroids: number[][] = [[...points[0]]];
     const used = new Set<number>([0]);
@@ -210,11 +211,12 @@ export default function Nifty50PCAClient({ sectorSlug, sectorName }: { sectorSlu
     const [error, setError] = useState<string | null>(null);
     const [activeK, setActiveK] = useState(4);
     const [pendingK, setPendingK] = useState(4);
+    const [maxKAllowed, setMaxKAllowed] = useState(8);
     const [hoveredCluster, setHoveredCluster] = useState<number | null>(null);
     const [sortField, setSortField] = useState<keyof Nifty50PCAPoint>("cluster");
     const [sortAsc, setSortAsc] = useState(true);
     const [drillCluster, setDrillCluster] = useState<number>(0);
-    const [drillK, setDrillK] = useState<number>(3);
+    const [drillK, setDrillK] = useState<number>(2);
 
     const load = (k: number) => {
         setLoading(true);
@@ -222,14 +224,19 @@ export default function Nifty50PCAClient({ sectorSlug, sectorName }: { sectorSlu
         fetchNifty50PCA(k, sectorSlug)
             .then((d) => {
                 setData(d);
-                setActiveK(k);
+                setActiveK(d.n_clusters);
+                setPendingK(d.n_clusters);
+                // Dynamically update max K based on received points
+                const count = d.points.length;
+                setMaxKAllowed(Math.max(2, Math.min(8, count)));
             })
             .catch((e) => setError(e?.message ?? "Failed to fetch data"))
             .finally(() => setLoading(false));
     };
 
     useEffect(() => {
-        load(4);
+        // Initial load with defaults
+        load(sectorSlug ? 2 : 4);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sectorSlug]);
 
@@ -361,16 +368,16 @@ export default function Nifty50PCAClient({ sectorSlug, sectorName }: { sectorSlu
             <Card>
                 <CardContent className="pt-4 pb-4 flex flex-wrap items-center gap-4">
                     <span className="text-sm font-medium text-muted-foreground shrink-0">Clusters (K):</span>
-                    <div className="flex gap-1.5">
-                        {[2, 3, 4, 5, 6].map((k) => (
+                    <div className="flex gap-1.5 transition-all">
+                        {[2, 3, 4, 5, 6, 8].filter(k => k <= maxKAllowed).map((k) => (
                             <button
                                 key={k}
                                 onClick={() => setPendingK(k)}
                                 className={cn(
-                                    "w-9 h-9 rounded-full text-sm font-bold border transition-colors",
+                                    "w-9 h-9 rounded-full text-sm font-bold border transition-all",
                                     pendingK === k
-                                        ? "bg-primary text-primary-foreground border-primary"
-                                        : "border-border text-muted-foreground hover:border-primary hover:text-primary"
+                                        ? "bg-primary text-primary-foreground border-primary scale-110 shadow-md"
+                                        : "border-border text-muted-foreground hover:border-primary hover:text-primary active:scale-95"
                                 )}
                             >
                                 {k}
@@ -413,13 +420,23 @@ export default function Nifty50PCAClient({ sectorSlug, sectorName }: { sectorSlu
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-36 gap-4">
                     <Loader2 className="h-12 w-12 animate-spin text-indigo-500" />
-                    <p className="text-muted-foreground text-sm font-medium">Running PCA &amp; K-Means{sectorName ? ` on ${sectorName}` : '…'}</p>
-                    <p className="text-muted-foreground text-xs">Fetching history for {sectorName ? 'sector' : '50'} stocks. First load takes ~20–40 seconds.</p>
+                    <p className="text-muted-foreground text-sm font-medium">Processing institutional data{sectorName ? ` for ${sectorName}` : '…'}</p>
+                    <p className="text-muted-foreground text-[11px] max-w-xs text-center leading-relaxed">
+                        We are performing multi-dimensional variance analysis and iterative cluster optimization. Initial processing for {sectorName ? 'new sectors' : 'index components'} typically completes within 20-30 seconds.
+                    </p>
                 </div>
             ) : error ? (
-                <div className="flex items-center gap-2 text-rose-500 bg-rose-50 border border-rose-200 rounded-xl px-5 py-6">
-                    <AlertCircle className="h-5 w-5 shrink-0" />
-                    <span>{error}</span>
+                <div className="flex flex-col items-center justify-center py-24 px-6 text-center border-2 border-dashed border-muted/50 rounded-2xl bg-secondary/10">
+                    <div className="bg-rose-100 p-3 rounded-full mb-4">
+                        <AlertCircle className="h-8 w-8 text-rose-600" />
+                    </div>
+                    <h3 className="text-lg font-bold text-foreground mb-2">Analysis Insight</h3>
+                    <p className="text-muted-foreground text-sm max-w-md leading-relaxed">{error}</p>
+                    {error.includes("2 stocks") && (
+                        <p className="text-xs text-muted-foreground mt-4 px-4 py-2 bg-white/50 rounded-lg border border-border">
+                            Professional Tip: Small sector populations may not exhibit meaningful clustering patterns. We recommend broadening your scope to the full index or related sectors for more robust statistical insights.
+                        </p>
+                    )}
                 </div>
             ) : data ? (
                 <>

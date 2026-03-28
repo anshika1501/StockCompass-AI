@@ -1632,9 +1632,13 @@ def nifty50_pca_clustering(request):
             logger.warning(f"PCA feature extraction skipped {sym}: {ex}")
             continue
 
-    if len(feature_rows) < max(4, n_clusters):
+    # Relax requirement to 2 stocks. PCA can technically run on 2+ points (1 component).
+    # K-Means requires at least k points.
+    effective_k = min(n_clusters, len(feature_rows))
+    
+    if len(feature_rows) < 2:
         return Response(
-            {'detail': f'Only {len(feature_rows)} stocks had enough data (need ≥ {n_clusters}).'},
+            {'detail': f'Clustering requires at least 2 stocks with sufficient historical data. Currently, only {len(feature_rows)} stocks are eligible in this sector.'},
             status=status.HTTP_400_BAD_REQUEST
         )
 
