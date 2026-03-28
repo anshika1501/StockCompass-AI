@@ -387,9 +387,17 @@ def run_portfolio_analysis(sector_slug):
     stocks_data = []
     for s in stocks:
         current_price = float(s.current_price or 0)
+        previous_close = float(s.previous_close or 0)
         min_price = float(s.fifty_two_week_low or 0)
         max_price = float(s.fifty_two_week_high or 0)
         pe = float(s.pe_ratio) if s.pe_ratio else None
+
+        # Price change vs previous close
+        change = round(current_price - previous_close, 2) if previous_close else 0.0
+        change_percent = round((change / previous_close) * 100, 2) if previous_close else 0.0
+
+        # Market cap (stored in DB, in INR already for NSE stocks)
+        mkt_cap = int(s.market_cap) if s.market_cap else None
 
         discount = _discount_level(min_price, max_price, current_price)
         score = _opportunity_score(pe if pe else 0, discount)
@@ -446,6 +454,9 @@ def run_portfolio_analysis(sector_slug):
             "discount_level": discount,
             "opportunity_score": score,
             "sector": s.sector or '',
+            "market_cap": mkt_cap,
+            "change": change,
+            "change_percent": change_percent,
             "sentiment_score": sentiment_score,
             "sentiment_label": sentiment_label,
             "sentiment_is_fallback": is_fallback,

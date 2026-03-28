@@ -3,6 +3,7 @@ import SectorCard from "@/components/SectorCard";
 import { getSectors } from "@/lib/stock-data";
 import { TrendingUp, BarChart3, ShieldCheck, PieChart, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import StockTicker from "@/components/dashboard/StockTicker";
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +13,7 @@ export default async function Portfolios() {
     return (
         <div className="min-h-screen bg-slate-50/30">
             <Navigation />
+            <StockTicker />
 
             <main className="container mx-auto px-4 lg:px-8 pt-8 pb-20">
                 {/* Compact Hero Section */}
@@ -40,6 +42,28 @@ export default async function Portfolios() {
                         </div>
                     </div>
                 </div>
+                
+                {/* Horizontal Quick List (Interactive UI) */}
+                <section className="mb-12 bg-[#0f172a] rounded-3xl p-8 border border-slate-800 shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[100px] pointer-events-none" />
+                    <div className="relative z-10">
+                        <h3 className="text-xl font-bold text-white mb-6 tracking-tight flex items-center gap-2">
+                            Quick Sector Navigation
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                           {sectors.map((s) => (
+                               <Link 
+                                 key={s.id} 
+                                 href={`/portfolio/${s.id}`}
+                                 className="px-4 py-2 rounded-xl bg-slate-800/50 hover:bg-[#4F8DF7] border border-slate-700 hover:border-[#4F8DF7] text-slate-300 hover:text-white text-[11px] font-bold transition-all flex items-center gap-2 shadow-sm"
+                               >
+                                  {s.name}
+                                  <ChevronRight size={12} className="opacity-50" />
+                               </Link>
+                           ))}
+                        </div>
+                    </div>
+                </section>
 
                 {/* Sector Grid */}
                 <section>
@@ -93,28 +117,7 @@ export default async function Portfolios() {
                         </div>
                     </div>
                 </section>
-                
-                {/* Horizontal Quick List (Interactive UI) */}
-                <section className="mt-16 bg-[#0f172a] rounded-3xl p-8 border border-slate-800 shadow-2xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[100px] pointer-events-none" />
-                    <div className="relative z-10">
-                        <h3 className="text-xl font-bold text-white mb-6 tracking-tight flex items-center gap-2">
-                            Quick Sector Navigation
-                        </h3>
-                        <div className="flex flex-wrap gap-2">
-                           {sectors.map((s) => (
-                               <Link 
-                                 key={s.id} 
-                                 href={`/portfolio/${s.id}`}
-                                 className="px-4 py-2 rounded-xl bg-slate-800/50 hover:bg-[#4F8DF7] border border-slate-700 hover:border-[#4F8DF7] text-slate-300 hover:text-white text-[11px] font-bold transition-all flex items-center gap-2 shadow-sm"
-                               >
-                                  {s.name}
-                                  <ChevronRight size={12} className="opacity-50" />
-                               </Link>
-                           ))}
-                        </div>
-                    </div>
-                </section>
+
             </main>
         </div>
     );

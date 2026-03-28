@@ -10,9 +10,9 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         <SidebarNav />
       </aside>
 
-      <main className="md:ml-72">
+      <main className="md:ml-72 flex flex-col min-h-screen">
         <DashboardTopBar />
-        <div className="min-h-screen bg-[#FFFFFF] p-6 lg:p-8">{children}</div>
+        <div className="flex-1 bg-[#FFFFFF] p-6 lg:p-8">{children}</div>
       </main>
     </div>
   );

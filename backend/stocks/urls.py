@@ -56,6 +56,10 @@ urlpatterns = [
     path('login/', views.login_user, name='login-user'),
     path('register/', views.register_user, name='register-user'),
     path('profile/', views.UpdateProfileView.as_view(), name='profile-update'),
+    path('settings/', views.UserSettingsView.as_view(), name='user-settings'),
+    path('recovery-method/', views.get_recovery_method, name='recovery-method'),
+    path('verify-recovery/', views.verify_recovery, name='verify-recovery'),
+    path('reset-password/', views.reset_password, name='reset-password'),
 
     # Portfolio Management
     path('portfolio/create/', views.CreatePortfolioView.as_view(), name='create-portfolio'),

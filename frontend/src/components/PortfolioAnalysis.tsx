@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
     Loader2, BrainCircuit, AlertCircle,
     PlusCircle, CheckCircle2, GitCompare, Star, Layers, BriefcaseBusiness,
+    ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCompareStocks } from "@/hooks/use-compare-stocks";
@@ -316,6 +317,11 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
     const [isAdding, setIsAdding] = useState<string | null>(null);
     const [hasMounted, setHasMounted] = useState(false);
 
+    // ── Sort state (MUST be before any early return) ──────────────────────────
+    type SortKey = keyof PortfolioAnalysisStock | null;
+    const [sortKey, setSortKey] = useState<SortKey>(null);
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
     useEffect(() => {
         setHasMounted(true);
         const loadPortfolios = async () => {
@@ -419,6 +425,36 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
         [pairResults]
     );
 
+    // ── Sort logic (MUST be before early returns) ─────────────────────────────
+    const requestSort = (key: SortKey) => {
+        if (sortKey === key) {
+            setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortKey(key);
+            setSortDir('asc');
+        }
+    };
+
+    const sortedStocks = useMemo(() => {
+        const stockList = data?.stocks ?? [];
+        if (!sortKey) return stockList;
+        return [...stockList].sort((a, b) => {
+            const av = a[sortKey as keyof PortfolioAnalysisStock];
+            const bv = b[sortKey as keyof PortfolioAnalysisStock];
+            if (av == null && bv == null) return 0;
+            if (av == null) return sortDir === 'asc' ? 1 : -1;
+            if (bv == null) return sortDir === 'asc' ? -1 : 1;
+            if (typeof av === 'string' && typeof bv === 'string') {
+                return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+            }
+            if (typeof av === 'number' && typeof bv === 'number') {
+                return sortDir === 'asc' ? av - bv : bv - av;
+            }
+            return 0;
+        });
+    }, [data, sortKey, sortDir]);
+
+
     if (loading) {
         return (
             <Card className="border-none shadow-sm bg-white">
@@ -459,6 +495,31 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
     const { stocks, correlation } = data;
     const corrKeys = Object.keys(correlation || {});
 
+    // ── Sortable header cell helpers (JSX helpers, not hooks) ─────────────────
+    const SortIcon = ({ k }: { k: SortKey }) => {
+        if (sortKey !== k) return <ArrowUpDown size={12} className="ml-1 opacity-40 group-hover:opacity-100 transition-opacity" />;
+        return sortDir === 'asc'
+            ? <ArrowUp size={12} className="ml-1 text-[#4F8DF7]" />
+            : <ArrowDown size={12} className="ml-1 text-[#4F8DF7]" />;
+    };
+
+    type ThAlign = 'left' | 'right' | 'center';
+    const SortableTh = ({ label, sk, align = 'left' }: { label: string; sk: SortKey; align?: ThAlign }) => (
+        <th
+            onClick={() => requestSort(sk)}
+            className={cn(
+                'px-4 py-4 text-[11px] font-black uppercase tracking-[0.1em] sticky top-0 z-20 whitespace-nowrap',
+                'bg-blue-50/80 backdrop-blur-sm border-b border-gray-200 text-[#1F2937]',
+                'cursor-pointer select-none group hover:bg-blue-100 transition-colors',
+                align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left'
+            )}
+        >
+            <span className={cn('inline-flex items-center', align === 'right' ? 'justify-end w-full' : align === 'center' ? 'justify-center w-full' : '')}>
+                {label}<SortIcon k={sk} />
+            </span>
+        </th>
+    );
+
     return (
         <div className="space-y-12">
             {/* ── Stock Metrics Table ──────────────────────────────────── */}
@@ -486,76 +547,96 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-100">
+                    <div className="overflow-x-auto max-h-[700px]">
+                        <table className="w-full border-collapse">
                             <thead>
-                                <tr className="bg-blue-50/30">
-                                    <th className="px-6 py-4 text-left text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Asset Information</th>
-                                    <th className="px-6 py-4 text-right text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Current Price</th>
-                                    <th className="px-6 py-4 text-right text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">52W High/Low</th>
-                                    <th className="px-6 py-4 text-right text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">P/E Statistics (Avg/Current)</th>
-                                    <th className="px-6 py-4 text-right text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Expected Value</th>
-                                    <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Signal</th>
-                                    <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Opp. Score</th>
-                                    <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Sentiment AI</th>
-                                    <th className="px-6 py-4 text-center text-[10px] font-semibold text-[#000000] uppercase tracking-[0.12em]">Actions</th>
+                                <tr>
+                                    <SortableTh label="Symbol" sk="symbol" align="left" />
+                                    <SortableTh label="Company Name" sk="company_name" align="left" />
+                                    <SortableTh label="Sector" sk="sector" align="left" />
+                                    <SortableTh label="Current Price" sk="current_price" align="right" />
+                                    <SortableTh label="52W Low" sk="min_price" align="right" />
+                                    <SortableTh label="52W High" sk="max_price" align="right" />
+                                    <SortableTh label="PE Min" sk="pe_min" align="right" />
+                                    <SortableTh label="PE Max" sk="pe_max" align="right" />
+                                    <SortableTh label="Current PE" sk="pe_ratio" align="right" />
+                                    <SortableTh label="PE Avg" sk="pe_avg" align="right" />
+                                    <SortableTh label="Recommendation" sk="recommendation" align="center" />
+                                    <SortableTh label="Market Cap" sk="market_cap" align="right" />
+                                    <SortableTh label="Change" sk="change" align="center" />
+                                    <SortableTh label="Sentiment" sk="sentiment_score" align="center" />
+                                    <th className="px-4 py-4 text-[11px] font-black uppercase tracking-[0.1em] sticky top-0 z-20 whitespace-nowrap bg-blue-50/80 backdrop-blur-sm border-b border-gray-200 text-[#1F2937] text-center">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                {stocks.map((stock) => (
+                            <tbody className="divide-y divide-gray-100">
+                                {sortedStocks.map((stock, idx) => (
                                     <tr
                                         key={stock.symbol}
                                         onClick={() => router.push(`/stock/${stock.symbol}?from=${sectorSlug}`)}
-                                        className="hover:bg-blue-50/20 transition-colors group cursor-pointer"
+                                        className={cn(
+                                            "transition-all duration-200 hover:bg-blue-100 group cursor-pointer",
+                                            idx % 2 === 0 ? "bg-white" : "bg-blue-50/30"
+                                        )}
                                     >
-                                        <td className="px-6 py-5 whitespace-nowrap">
-                                            <div className="flex flex-col">
-                                                <div className="flex items-center gap-2">
-                                                  <span className="font-bold text-[#4F8DF7] text-sm tracking-tight">{stock.symbol}</span>
-                                                  <Badge variant="outline" className="text-[9px] px-1 py-0 border-gray-100 text-gray-400 font-semibold">{stock.sector || 'N/A'}</Badge>
-                                                </div>
-                                                <span className="text-[11px] font-medium text-gray-500 uppercase truncate max-w-[180px]">{stock.company_name}</span>
-                                            </div>
+                                        <td className="px-4 py-5 text-sm font-black text-[#4F8DF7] whitespace-nowrap">
+                                            {stock.symbol}
                                         </td>
-                                        <td className="px-6 py-5 text-right font-bold text-[#000000] text-sm tracking-tight">
-                                            ₹{stock.current_price?.toLocaleString() ?? '-'}
+                                        <td className="px-4 py-5 text-sm text-[#1F2937] font-bold whitespace-nowrap max-w-[180px] truncate">
+                                            {stock.company_name}
                                         </td>
-                                        <td className="px-6 py-5 text-right">
-                                            <div className="flex flex-col items-end">
-                                                <span className="text-[11px] font-semibold text-emerald-600 tracking-tight" title="52W High">↑ ₹{stock.max_price?.toLocaleString() ?? '-'}</span>
-                                                <span className="text-[11px] font-semibold text-rose-600 tracking-tight" title="52W Low">↓ ₹{stock.min_price?.toLocaleString() ?? '-'}</span>
-                                            </div>
+                                        <td className="px-4 py-5 text-sm text-[#1F2937] whitespace-nowrap">
+                                            <Badge variant="outline" className="text-[11px] font-bold border-gray-300 text-[#1F2937] px-2 py-0.5 rounded-md">
+                                                {stock.sector || 'N/A'}
+                                            </Badge>
                                         </td>
-                                        <td className="px-6 py-5 text-right">
-                                            <div className="flex flex-col items-end">
-                                              <span className="text-[11px] font-bold text-gray-900 tracking-tight">{stock.pe_ratio != null ? stock.pe_ratio.toFixed(2) : '-'}</span>
-                                              <div className="flex items-center gap-1">
-                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">AVG:</span>
-                                                <span className="text-[10px] font-semibold text-gray-500 tracking-tight">{stock.pe_avg != null ? stock.pe_avg.toFixed(2) : '-'}</span>
-                                              </div>
-                                            </div>
+                                        <td className="px-4 py-5 text-right text-sm font-bold text-[#000000] whitespace-nowrap">
+                                            ₹{stock.current_price?.toFixed(2) ?? 'N/A'}
                                         </td>
-                                        <td className="px-6 py-5 text-right">
-                                            <span className="font-bold text-[#000000] text-sm tracking-tight">
-                                                {stock.expected_price != null ? `₹${stock.expected_price.toLocaleString()}` : '-'}
-                                            </span>
+                                        <td className="px-4 py-5 text-right text-[13px] font-medium text-rose-600 opacity-90 whitespace-nowrap">
+                                            ₹{stock.min_price?.toFixed(2) ?? 'N/A'}
                                         </td>
-                                        <td className="px-6 py-5 text-center">
+                                        <td className="px-4 py-5 text-right text-[13px] font-medium text-emerald-600 opacity-90 whitespace-nowrap">
+                                            ₹{stock.max_price?.toFixed(2) ?? 'N/A'}
+                                        </td>
+                                        <td className="px-4 py-5 text-right text-[13px] font-medium text-[#1F2937] whitespace-nowrap">
+                                            {stock.pe_min != null ? stock.pe_min.toFixed(2) : '-'}
+                                        </td>
+                                        <td className="px-4 py-5 text-right text-[13px] font-medium text-[#1F2937] whitespace-nowrap">
+                                            {stock.pe_max != null ? stock.pe_max.toFixed(2) : '-'}
+                                        </td>
+                                        <td className="px-4 py-5 text-right text-[13px] font-bold text-[#4F8DF7] whitespace-nowrap">
+                                            {stock.pe_ratio != null ? stock.pe_ratio.toFixed(2) : '-'}
+                                        </td>
+                                        <td className="px-4 py-5 text-right text-[13px] font-medium text-[#1F2937] whitespace-nowrap">
+                                            {stock.pe_avg != null ? stock.pe_avg.toFixed(2) : '-'}
+                                        </td>
+                                        <td className="px-4 py-5 text-center whitespace-nowrap">
                                             <span className={cn(
-                                                'inline-block px-3 py-1.5 rounded-lg text-[10px] font-semibold tracking-[0.1em] uppercase border shadow-sm',
-                                                stock.recommendation === 'BUY' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                                                    stock.recommendation === 'SELL' ? 'bg-rose-50 text-rose-700 border-rose-100' :
-                                                        'bg-amber-50 text-amber-700 border-amber-100',
+                                                'inline-block px-3 py-1 rounded-lg text-[11px] font-black tracking-wider uppercase border',
+                                                stock.recommendation === 'BUY' && 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                                stock.recommendation === 'SELL' && 'bg-rose-50 text-rose-700 border-rose-200',
+                                                stock.recommendation === 'HOLD' && 'bg-amber-50 text-amber-700 border-amber-200',
                                             )}>
                                                 {stock.recommendation}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-5 text-center">
-                                            <div className="inline-flex items-center justify-center min-w-[54px] px-2.5 py-1.5 rounded-xl bg-blue-50 border border-blue-100 text-[#4F8DF7] text-[13px] font-semibold shadow-inner">
-                                                {stock.opportunity_score ?? '-'}
-                                            </div>
+                                        <td className="px-4 py-5 text-right text-sm font-bold text-[#1F2937] whitespace-nowrap">
+                                            {stock.market_cap != null ? `₹${(stock.market_cap / 1e7).toFixed(2)} Cr` : '-'}
                                         </td>
-                                        <td className="px-6 py-5 text-center">
+                                        <td className={cn(
+                                            'px-4 py-5 text-center text-[13px] font-black whitespace-nowrap',
+                                            (stock.change ?? 0) >= 0 ? 'text-emerald-700' : 'text-rose-700'
+                                        )}>
+                                            {stock.change != null ? (
+                                                <span className={cn(
+                                                    "inline-flex items-center px-2 py-0.5 rounded",
+                                                    stock.change >= 0 ? "bg-emerald-50" : "bg-rose-50"
+                                                )}>
+                                                    {stock.change >= 0 ? '+' : ''}{stock.change.toFixed(2)} ({(stock.change_percent ?? 0).toFixed(2)}%)
+                                                </span>
+                                            ) : '-'}
+                                        </td>
+                                        <td className="px-4 py-5 text-center">
                                             {stock.sentiment_score !== undefined && stock.sentiment_score !== null ? (
                                                 <div className="flex flex-col items-center gap-1">
                                                     <div className="flex items-center gap-1">
@@ -581,7 +662,7 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                                 <span className="text-[11px] font-medium text-gray-400">N/A</span>
                                             )}
                                         </td>
-                                        <td className="px-6 py-5 text-center whitespace-nowrap cursor-default" onClick={(e) => e.stopPropagation()}>
+                                        <td className="px-4 py-5 text-center whitespace-nowrap cursor-default" onClick={(e) => e.stopPropagation()}>
                                             <div className="flex items-center justify-center gap-2 relative z-[100]">
                                                 {hasMounted ? (
                                                     <>
@@ -595,10 +676,10 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                                                 }
                                                             }}
                                                             className={cn(
-                                                                'flex items-center gap-2 text-[10px] font-semibold px-4 py-2 rounded-xl transition-all uppercase tracking-[0.12em] border cursor-pointer pointer-events-auto relative z-[101]',
+                                                                'flex items-center gap-1.5 text-xs font-black px-3 py-2 rounded-lg transition-all border uppercase tracking-tighter cursor-pointer pointer-events-auto relative z-[101]',
                                                                 isInCompare(stock.symbol)
-                                                                    ? 'text-white bg-[#4F8DF7] border-[#4F8DF7] shadow-lg shadow-[#4F8DF7]/20'
-                                                                    : 'text-gray-400 border-gray-100 bg-white hover:border-[#4F8DF7] hover:text-[#4F8DF7] shadow-sm'
+                                                                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200 shadow-sm'
+                                                                    : 'text-[#1F2937] border-gray-200 hover:border-[#4F8DF7] hover:text-[#4F8DF7] hover:bg-gray-50'
                                                             )}
                                                         >
                                                             {isInCompare(stock.symbol)
@@ -612,8 +693,8 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                                                     disabled={isAdding === stock.symbol}
                                                                     title="Add to Portfolio"
                                                                     className={cn(
-                                                                        "flex items-center gap-2 text-[10px] font-bold px-4 py-2 rounded-xl transition-all uppercase tracking-[0.12em] shadow-sm cursor-pointer pointer-events-auto relative z-[101]",
-                                                                        isAdding === stock.symbol 
+                                                                        "flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg transition-all shadow-sm cursor-pointer uppercase tracking-tighter pointer-events-auto relative z-[101]",
+                                                                        isAdding === stock.symbol
                                                                             ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
                                                                             : "bg-[#2563EB] text-white border-[#2563EB] hover:bg-[#1D4ED8] hover:shadow-md"
                                                                     )}

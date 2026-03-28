@@ -140,6 +140,9 @@ export interface PortfolioAnalysisStock {
   discount_level: string;
   opportunity_score: number;
   sector: string;
+  market_cap?: number | null;
+  change?: number | null;
+  change_percent?: number | null;
   sentiment_score?: number | null;
   sentiment_label?: 'BULLISH' | 'NEUTRAL' | 'BEARISH' | null;
   sentiment_is_fallback?: boolean;

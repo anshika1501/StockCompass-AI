@@ -11,6 +11,7 @@ from django.conf import settings
 from .models import StockCategory, Stock, Portfolio, Holding, UserSecurityProfile
 from .serializers import PortfolioSerializer, HoldingSerializer, StockSerializer
 from .services import StockDataService
+from django.contrib.auth.hashers import make_password, check_password
 from .chatbot import ChatAdvisorService, OllamaClient, DEFAULT_CHAT_MODEL, DEFAULT_EMBED_MODEL, DEFAULT_OLLAMA_BASE
 from .analytics import (
     search_live_stocks,
@@ -2865,6 +2866,7 @@ def login_user(request):
             'id': user.pk,
             'email': user.email,
             'name': user.get_full_name() or user.username,
+            'date_joined': user.date_joined.isoformat() if user.date_joined else None,
         },
     })
 
@@ -2885,6 +2887,8 @@ def register_user(request):
     password = request.data.get('password') or ''
     name = (request.data.get('name') or '').strip()
     mpin = (request.data.get('mpin') or '').strip()
+    security_question = (request.data.get('security_question') or '').strip()
+    security_answer = (request.data.get('security_answer') or '').strip()
 
     if not email or not password:
         return Response({'error': 'Email and password are required.'}, status=400)
@@ -2906,11 +2910,15 @@ def register_user(request):
             user.last_name = parts[1] if len(parts) > 1 else ''
             user.save(update_fields=['first_name', 'last_name'])
 
-        # Store MPIN hash if provided
-        if mpin:
-            import hashlib as _hl
-            mpin_hash = _hl.sha256(mpin.encode()).hexdigest()
-            UserSecurityProfile.objects.create(user=user, mpin_hash=mpin_hash)
+        # Store security profile
+        import hashlib as _hl
+        from django.contrib.auth.hashers import make_password
+        mpin_hash = _hl.sha256(mpin.encode()).hexdigest() if mpin else ''
+        sec_profile = UserSecurityProfile(user=user, mpin_hash=mpin_hash)
+        if security_question and security_answer:
+            sec_profile.security_question = security_question
+            sec_profile.security_answer = make_password(security_answer.lower().strip())
+        sec_profile.save()
 
     except Exception as exc:
         logger.error("register_user error: %s", exc)
@@ -2947,6 +2955,7 @@ class UpdateProfileView(APIView):
             'id': user.pk,
             'email': user.email,
             'name': user.get_full_name() or user.username,
+            'date_joined': user.date_joined.isoformat() if user.date_joined else None,
         })
 
 
@@ -3246,3 +3255,180 @@ class DeleteHoldingView(APIView):
 
         holding.delete()
         return Response({'message': 'Holding deleted.'}, status=200)
+
+class UserSettingsView(APIView):
+    """GET/POST /api/settings/ to handle user password, MPIN, and Telegram ID"""
+
+    def get(self, request):
+        user = _get_user_from_request(request)
+        if user is None:
+            return Response({'error': 'Authentication required.'}, status=401)
+            
+        profile, created = UserSecurityProfile.objects.get_or_create(user=user)
+        has_mpin = bool(profile.mpin_hash)
+        telegram_id = profile.telegram_id
+        
+        return Response({
+            'has_mpin': has_mpin,
+            'telegram_id': telegram_id or '',
+            'security_question': profile.security_question or '',
+            'has_security_answer': bool(profile.security_answer)
+        }, status=200)
+
+    def post(self, request):
+        user = _get_user_from_request(request)
+        if user is None:
+            return Response({'error': 'Authentication required.'}, status=401)
+        
+        action = request.data.get('action')
+        profile, created = UserSecurityProfile.objects.get_or_create(user=user)
+        
+        if action == 'change_password':
+            current_pass = request.data.get('current_password')
+            new_pass = request.data.get('new_password')
+            confirm_pass = request.data.get('confirm_password')
+            
+            if not current_pass or not new_pass or not confirm_pass:
+                return Response({'error': 'All password fields are required.'}, status=400)
+            if new_pass != confirm_pass:
+                return Response({'error': 'New passwords do not match.'}, status=400)
+            if not user.check_password(current_pass):
+                return Response({'error': 'Incorrect current password.'}, status=400)
+                
+            user.set_password(new_pass)
+            user.save()
+            return Response({'message': 'Password updated successfully.'}, status=200)
+            
+        elif action == 'change_mpin':
+            current_mpin = request.data.get('current_mpin')
+            new_mpin = request.data.get('new_mpin')
+            confirm_mpin = request.data.get('confirm_mpin')
+            
+            if not new_mpin or not confirm_mpin:
+                return Response({'error': 'New MPIN fields are required.'}, status=400)
+            if new_mpin != confirm_mpin:
+                return Response({'error': 'New MPINs do not match.'}, status=400)
+                
+            if profile.mpin_hash:
+                if not current_mpin:
+                    return Response({'error': 'Current MPIN is required.'}, status=400)
+                if not check_password(current_mpin, profile.mpin_hash):
+                    return Response({'error': 'Incorrect current MPIN.'}, status=400)
+            
+            profile.mpin_hash = make_password(new_mpin)
+            profile.save()
+            return Response({'message': 'MPIN updated successfully.'}, status=200)
+            
+        elif action == 'update_telegram':
+            telegram_id = request.data.get('telegram_id', '')
+            profile.telegram_id = telegram_id
+            profile.save()
+            return Response({'message': 'Telegram ID updated successfully.', 'telegram_id': telegram_id}, status=200)
+            
+        elif action == 'update_security_question':
+            from django.contrib.auth.hashers import make_password
+            question = request.data.get('security_question', '')
+            answer = request.data.get('security_answer', '')
+            
+            if not question or not answer:
+                return Response({'error': 'Security question and answer are required.'}, status=400)
+                
+            profile.security_question = question
+            profile.security_answer = make_password(answer.lower().strip())
+            profile.save()
+            return Response({'message': 'Security question updated successfully.'}, status=200)
+            
+        return Response({'error': 'Invalid or missing action.'}, status=400)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def get_recovery_method(request):
+    """
+    POST /api/recovery-method/
+    Body: { "email": "..." }
+    """
+    from django.contrib.auth import get_user_model
+    from django.db.models import Q
+    _User = get_user_model()
+    
+    email = request.data.get('email', '').strip().lower()
+    user = _User.objects.filter(Q(email__iexact=email) | Q(username__iexact=email)).first()
+    
+    if not user:
+        return Response({'error': 'User not found.'}, status=404)
+        
+    try:
+        profile = getattr(user, 'security_profile', None)
+        has_telegram = bool(profile and profile.telegram_id)
+        question = profile.security_question if profile and profile.security_question else None
+        
+        return Response({
+            'has_telegram': has_telegram,
+            'security_question': question
+        })
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def verify_recovery(request):
+    """
+    POST /api/verify-recovery/
+    Body: { "email": "...", "security_answer": "..." }
+    """
+    from django.contrib.auth import get_user_model
+    from django.core.cache import cache
+    import secrets
+    from django.db.models import Q
+    _User = get_user_model()
+    
+    email = request.data.get('email', '').strip().lower()
+    answer = request.data.get('security_answer', '').strip()
+    
+    user = _User.objects.filter(Q(email__iexact=email) | Q(username__iexact=email)).first()
+    if not user:
+        return Response({'error': 'User not found.'}, status=404)
+        
+    profile = getattr(user, 'security_profile', None)
+    from django.contrib.auth.hashers import check_password
+    if not profile or not check_password(answer.lower().strip(), profile.security_answer):
+        return Response({'error': 'Incorrect answer.'}, status=400)
+        
+    token = secrets.token_hex(16)
+    cache.set(f"pwd_reset_{token}", user.pk, 600)  # valid for 10 mins
+    
+    return Response({'recovery_token': token})
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_password(request):
+    """
+    POST /api/reset-password/
+    Body: { "recovery_token": "...", "new_password": "..." }
+    """
+    from django.contrib.auth import get_user_model
+    from django.core.cache import cache
+    _User = get_user_model()
+    
+    token = request.data.get('recovery_token')
+    new_password = request.data.get('new_password')
+    
+    if not token or not new_password:
+        return Response({'error': 'Missing parameters.'}, status=400)
+        
+    user_id = cache.get(f"pwd_reset_{token}")
+    if not user_id:
+        return Response({'error': 'Invalid or expired token.'}, status=400)
+        
+    user = _User.objects.filter(pk=user_id).first()
+    if not user:
+        return Response({'error': 'User not found.'}, status=404)
+        
+    user.set_password(new_password)
+    user.save()
+    cache.delete(f"pwd_reset_{token}")
+    
+    return Response({'message': 'Password reset successful.'})
+
+

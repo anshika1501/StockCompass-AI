@@ -4,7 +4,6 @@ import TrustStrip from "@/components/home/TrustStrip";
 import Features from "@/components/home/Features";
 import LivePreview from "@/components/home/LivePreview";
 import HowItWorks from "@/components/home/HowItWorks";
-import Testimonials from "@/components/home/Testimonials";
 import CTA from "@/components/home/CTA";
 import Footer from "@/components/home/Footer";
 import ChatbotButton from "@/components/home/ChatbotButton";
@@ -31,7 +30,6 @@ export default function Home() {
         <Features />
         <LivePreview />
         <HowItWorks />
-        <Testimonials />
         <CTA />
         <Footer />
         <ChatbotButton />
