@@ -22,6 +22,7 @@ interface StocksTableProps {
     stocks: Stock[];
     sortable?: boolean;
     sectorSlug?: string;
+    market?: string;
 }
 
 type SortKey = keyof Stock | null;
@@ -31,7 +32,7 @@ interface SortConfig {
     direction: 'asc' | 'desc';
 }
 
-export default function StocksTable({ stocks, sortable = true, sectorSlug }: StocksTableProps) {
+export default function StocksTable({ stocks, sortable = true, sectorSlug, market }: StocksTableProps) {
     const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: 'asc' });
     const { compareList, addToCompare, removeFromCompare, isInCompare } = useCompareStocks();
     const router = useRouter();
@@ -76,7 +77,7 @@ export default function StocksTable({ stocks, sortable = true, sectorSlug }: Sto
                 1,
                 stock.currentPrice || 0
             );
-            
+
             toast({
                 title: "Success",
                 description: `${stock.ticker} added to ${targetPortfolioName}`,
@@ -242,179 +243,186 @@ export default function StocksTable({ stocks, sortable = true, sectorSlug }: Sto
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {sortedStocks.map((stock, idx) => (
-                                <tr
-                                    key={stock.ticker}
-                                    onClick={() => router.push(`/stock/${stock.ticker}${sectorSlug ? `?from=${sectorSlug}` : ''}`)}
-                                    className={cn(
-                                        "transition-all duration-200 hover:bg-blue-100 group cursor-pointer",
-                                        idx % 2 === 0 ? "bg-white" : "bg-blue-50/30"
-                                    )}
-                                >
-                                    <td className="px-4 py-5 text-sm font-black text-[#000000] whitespace-nowrap">
-                                        {stock.ticker}
-                                    </td>
-                                    <td className="px-4 py-5 text-sm text-[#1F2937] font-bold whitespace-nowrap max-w-xs truncate">
-                                        {stock.name}
-                                    </td>
-                                    <td className="px-4 py-5 text-sm text-[#1F2937] whitespace-nowrap">
-                                        <Badge variant="outline" className="text-[11px] font-bold border-gray-300 text-[#1F2937] px-2 py-0.5 rounded-md">
-                                            {stock.sector}
-                                        </Badge>
-                                    </td>
-                                    <td className="px-4 py-5 text-right text-sm font-bold text-[#000000] whitespace-nowrap">
-                                        ₹{stock.currentPrice?.toFixed(2) ?? 'N/A'}
-                                    </td>
-                                    <td className="px-4 py-5 text-right text-[13px] font-medium text-[#1F2937] opacity-80 whitespace-nowrap">
-                                        ₹{stock.fiftyTwoWeekLow?.toFixed(2) ?? 'N/A'}
-                                    </td>
-                                    <td className="px-4 py-5 text-right text-[13px] font-medium text-[#1F2937] opacity-80 whitespace-nowrap">
-                                        ₹{stock.fiftyTwoWeekHigh?.toFixed(2) ?? 'N/A'}
-                                    </td>
-                                    <td className="px-4 py-5 text-right text-[13px] font-medium text-[#1F2937] whitespace-nowrap">
-                                        {stock.peMin?.toFixed(2) ?? '-'}
-                                    </td>
-                                    <td className="px-4 py-5 text-right text-[13px] font-medium text-[#1F2937] whitespace-nowrap">
-                                        {stock.peMax?.toFixed(2) ?? '-'}
-                                    </td>
-                                    <td className="px-4 py-5 text-right text-[13px] font-bold text-[#4F8DF7] whitespace-nowrap">
-                                        {stock.peRatio?.toFixed(2) ?? '-'}
-                                    </td>
-                                    <td className="px-4 py-5 text-right text-[13px] font-medium text-[#1F2937] whitespace-nowrap">
-                                        {stock.peAvg?.toFixed(2) ?? '-'}
-                                    </td>
-                                    <td className="px-4 py-5 text-center whitespace-nowrap">
-                                        <span className={cn(
-                                            'inline-block px-3 py-1 rounded-lg text-[11px] font-black tracking-wider uppercase border',
-                                            stock.recommendation === 'BUY' && 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                                            stock.recommendation === 'SELL' && 'bg-rose-50 text-rose-700 border-rose-200',
-                                            stock.recommendation === 'HOLD' && 'bg-amber-50 text-amber-700 border-amber-200',
-                                        )}>
-                                            {stock.recommendation}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-5 text-right text-sm font-bold text-[#1F2937] whitespace-nowrap">
-                                        {stock.marketCap ? `₹${(stock.marketCap / 1e7).toFixed(2)} Cr` : '-'}
-                                    </td>
-                                    <td className={cn(
-                                        'px-4 py-5 text-center text-[13px] font-black whitespace-nowrap',
-                                        stock.change >= 0 ? 'text-emerald-700' : 'text-rose-700'
-                                    )}>
-                                        <span className={cn(
-                                            "inline-flex items-center px-2 py-0.5 rounded",
-                                            stock.change >= 0 ? "bg-emerald-50" : "bg-rose-50"
-                                        )}>
-                                            {stock.change >= 0 ? '+' : ''}{stock.change.toFixed(2)} ({stock.changePercent.toFixed(2)}%)
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-5 text-center">
-                                        {stock.sentiment_score !== undefined && stock.sentiment_score !== null ? (
-                                            <div className="flex flex-col items-center gap-1">
-                                                <div className="flex items-center gap-1">
-                                                    <span className={cn(
-                                                        "text-[10px] font-bold px-2 py-0.5 rounded-md border",
-                                                        stock.sentiment_label === 'BULLISH' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
-                                                        stock.sentiment_label === 'BEARISH' ? "bg-rose-50 text-rose-700 border-rose-100" :
-                                                        "bg-gray-50 text-gray-600 border-gray-100"
-                                                    )}>
-                                                        {stock.sentiment_label}
-                                                    </span>
-                                                    {stock.sentiment_is_fallback && (
-                                                        <span className="text-[9px] font-medium text-slate-400 cursor-help" title="Sector Average (No stock-specific news today)">
-                                                            (S)
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <span className="text-[11px] font-bold text-slate-500">
-                                                    {stock.sentiment_score > 0 ? '+' : ''}{stock.sentiment_score.toFixed(3)}
-                                                </span>
-                                            </div>
-                                        ) : (
-                                            <span className="text-[11px] font-medium text-gray-400">N/A</span>
+                            {sortedStocks.map((stock, idx) => {
+                                const query = new URLSearchParams();
+                                if (sectorSlug) query.set('from', sectorSlug);
+                                if (market) query.set('market', market);
+                                const suffix = query.toString() ? `?${query.toString()}` : '';
+                                const href = `/stock/${stock.ticker}${suffix}`;
+                                return (
+                                    <tr
+                                        key={stock.ticker}
+                                        onClick={() => router.push(href)}
+                                        className={cn(
+                                            "transition-all duration-200 hover:bg-blue-100 group cursor-pointer",
+                                            idx % 2 === 0 ? "bg-white" : "bg-blue-50/30"
                                         )}
-                                    </td>
-                                    <td className="px-4 py-5 text-center whitespace-nowrap cursor-default" onClick={(e) => e.stopPropagation()}>
-                                        <div className="flex items-center justify-center gap-2 relative z-[100]">
-                                            {hasMounted ? (
-                                                <>
-                                                    <Link 
-                                                        href={`/stock/${stock.ticker}${sectorSlug ? `?from=${sectorSlug}` : ''}`} 
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        className="text-xs font-black text-[#4F8DF7] hover:text-[#2563EB] transition-colors px-3 py-2 rounded-lg bg-[#4F8DF7]/5 hover:bg-[#4F8DF7]/15 border border-[#4F8DF7]/20 uppercase tracking-tighter cursor-pointer pointer-events-auto relative z-[101]"
-                                                    >
-                                                        Details
-                                                    </Link>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (isInCompare(stock.ticker)) {
-                                                                removeFromCompare(stock.ticker);
-                                                            } else {
-                                                                addToCompare({ symbol: stock.ticker, name: stock.name });
-                                                            }
-                                                        }}
-                                                        title={isInCompare(stock.ticker) ? 'Remove from Compare' : 'Add to Compare'}
-                                                        className={cn(
-                                                            'flex items-center gap-1.5 text-xs font-black px-3 py-2 rounded-lg transition-all border uppercase tracking-tighter cursor-pointer pointer-events-auto relative z-[101]',
-                                                            isInCompare(stock.ticker)
-                                                                ? 'text-emerald-700 bg-emerald-50 border-emerald-200 shadow-sm'
-                                                                : 'text-[#1F2937] border-gray-200 hover:border-[#4F8DF7] hover:text-[#4F8DF7] hover:bg-gray-50'
+                                    >
+                                        <td className="px-4 py-5 text-sm font-black text-[#000000] whitespace-nowrap">
+                                            {stock.ticker}
+                                        </td>
+                                        <td className="px-4 py-5 text-sm text-[#1F2937] font-bold whitespace-nowrap max-w-xs truncate">
+                                            {stock.name}
+                                        </td>
+                                        <td className="px-4 py-5 text-sm text-[#1F2937] whitespace-nowrap">
+                                            <Badge variant="outline" className="text-[11px] font-bold border-gray-300 text-[#1F2937] px-2 py-0.5 rounded-md">
+                                                {stock.sector}
+                                            </Badge>
+                                        </td>
+                                        <td className="px-4 py-5 text-right text-sm font-bold text-[#000000] whitespace-nowrap">
+                                            ₹{stock.currentPrice?.toFixed(2) ?? 'N/A'}
+                                        </td>
+                                        <td className="px-4 py-5 text-right text-[13px] font-medium text-[#1F2937] opacity-80 whitespace-nowrap">
+                                            ₹{stock.fiftyTwoWeekLow?.toFixed(2) ?? 'N/A'}
+                                        </td>
+                                        <td className="px-4 py-5 text-right text-[13px] font-medium text-[#1F2937] opacity-80 whitespace-nowrap">
+                                            ₹{stock.fiftyTwoWeekHigh?.toFixed(2) ?? 'N/A'}
+                                        </td>
+                                        <td className="px-4 py-5 text-right text-[13px] font-medium text-[#1F2937] whitespace-nowrap">
+                                            {stock.peMin?.toFixed(2) ?? '-'}
+                                        </td>
+                                        <td className="px-4 py-5 text-right text-[13px] font-medium text-[#1F2937] whitespace-nowrap">
+                                            {stock.peMax?.toFixed(2) ?? '-'}
+                                        </td>
+                                        <td className="px-4 py-5 text-right text-[13px] font-bold text-[#4F8DF7] whitespace-nowrap">
+                                            {stock.peRatio?.toFixed(2) ?? '-'}
+                                        </td>
+                                        <td className="px-4 py-5 text-right text-[13px] font-medium text-[#1F2937] whitespace-nowrap">
+                                            {stock.peAvg?.toFixed(2) ?? '-'}
+                                        </td>
+                                        <td className="px-4 py-5 text-center whitespace-nowrap">
+                                            <span className={cn(
+                                                'inline-block px-3 py-1 rounded-lg text-[11px] font-black tracking-wider uppercase border',
+                                                stock.recommendation === 'BUY' && 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                                stock.recommendation === 'SELL' && 'bg-rose-50 text-rose-700 border-rose-200',
+                                                stock.recommendation === 'HOLD' && 'bg-amber-50 text-amber-700 border-amber-200',
+                                            )}>
+                                                {stock.recommendation}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-5 text-right text-sm font-bold text-[#1F2937] whitespace-nowrap">
+                                            {stock.marketCap ? `₹${(stock.marketCap / 1e7).toFixed(2)} Cr` : '-'}
+                                        </td>
+                                        <td className={cn(
+                                            'px-4 py-5 text-center text-[13px] font-black whitespace-nowrap',
+                                            stock.change >= 0 ? 'text-emerald-700' : 'text-rose-700'
+                                        )}>
+                                            <span className={cn(
+                                                "inline-flex items-center px-2 py-0.5 rounded",
+                                                stock.change >= 0 ? "bg-emerald-50" : "bg-rose-50"
+                                            )}>
+                                                {stock.change >= 0 ? '+' : ''}{stock.change.toFixed(2)} ({stock.changePercent.toFixed(2)}%)
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-5 text-center">
+                                            {stock.sentiment_score !== undefined && stock.sentiment_score !== null ? (
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <div className="flex items-center gap-1">
+                                                        <span className={cn(
+                                                            "text-[10px] font-bold px-2 py-0.5 rounded-md border",
+                                                            stock.sentiment_label === 'BULLISH' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                                                                stock.sentiment_label === 'BEARISH' ? "bg-rose-50 text-rose-700 border-rose-100" :
+                                                                    "bg-gray-50 text-gray-600 border-gray-100"
+                                                        )}>
+                                                            {stock.sentiment_label}
+                                                        </span>
+                                                        {stock.sentiment_is_fallback && (
+                                                            <span className="text-[9px] font-medium text-slate-400 cursor-help" title="Sector Average (No stock-specific news today)">
+                                                                (S)
+                                                            </span>
                                                         )}
-                                                    >
-                                                        {isInCompare(stock.ticker)
-                                                            ? <><CheckCircle2 size={13} /> Active</>
-                                                            : <><PlusCircle size={13} /> Compare</>
-                                                        }
-                                                    </button>
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                                            <button
-                                                                disabled={isAdding === stock.ticker}
-                                                                title="Add to Portfolio"
-                                                                className={cn(
-                                                                    "flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg transition-all shadow-sm cursor-pointer uppercase tracking-tighter pointer-events-auto relative z-[101]",
-                                                                    isAdding === stock.ticker 
-                                                                        ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                                                                        : "bg-[#2563EB] text-white border-[#2563EB] hover:bg-[#1D4ED8] hover:shadow-md"
-                                                                )}
-                                                            >
-                                                                {isAdding === stock.ticker ? (
-                                                                    <Loader2 size={13} className="animate-spin" />
-                                                                ) : (
-                                                                    <PlusCircle size={13} />
-                                                                )}
-                                                                ADD
-                                                            </button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end" className="w-48 bg-white border border-gray-100 shadow-xl rounded-xl p-1 z-[110]" onClick={(e) => e.stopPropagation()}>
-                                                            {portfolios.length > 0 ? (
-                                                                portfolios.map((portfolio) => (
-                                                                    <DropdownMenuItem
-                                                                        key={portfolio.id}
-                                                                        className="flex items-center gap-2 px-3 py-2 text-[11px] font-bold text-gray-700 hover:bg-blue-50 hover:text-[#2563EB] rounded-lg cursor-pointer transition-colors uppercase tracking-wider"
-                                                                        onSelect={() => {
-                                                                            handleQuickAdd(stock, portfolio.id, portfolio.name);
-                                                                        }}
-                                                                    >
-                                                                        <BriefcaseBusiness size={14} className="opacity-60" />
-                                                                        {portfolio.name}
-                                                                    </DropdownMenuItem>
-                                                                ))
-                                                            ) : (
-                                                                <div className="px-3 py-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center">
-                                                                    No Portfolios
-                                                                </div>
-                                                            )}
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </>
+                                                    </div>
+                                                    <span className="text-[11px] font-bold text-slate-500">
+                                                        {stock.sentiment_score > 0 ? '+' : ''}{stock.sentiment_score.toFixed(3)}
+                                                    </span>
+                                                </div>
                                             ) : (
-                                                <div className="w-full h-8 bg-gray-50/50 rounded-xl animate-pulse" />
+                                                <span className="text-[11px] font-medium text-gray-400">N/A</span>
                                             )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
+                                        </td>
+                                        <td className="px-4 py-5 text-center whitespace-nowrap cursor-default" onClick={(e) => e.stopPropagation()}>
+                                            <div className="flex items-center justify-center gap-2 relative z-[100]">
+                                                {hasMounted ? (
+                                                    <>
+                                                        <Link
+                                                            href={href}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="text-xs font-black text-[#4F8DF7] hover:text-[#2563EB] transition-colors px-3 py-2 rounded-lg bg-[#4F8DF7]/5 hover:bg-[#4F8DF7]/15 border border-[#4F8DF7]/20 uppercase tracking-tighter cursor-pointer pointer-events-auto relative z-[101]"
+                                                        >
+                                                            Details
+                                                        </Link>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (isInCompare(stock.ticker)) {
+                                                                    removeFromCompare(stock.ticker);
+                                                                } else {
+                                                                    addToCompare({ symbol: stock.ticker, name: stock.name });
+                                                                }
+                                                            }}
+                                                            title={isInCompare(stock.ticker) ? 'Remove from Compare' : 'Add to Compare'}
+                                                            className={cn(
+                                                                'flex items-center gap-1.5 text-xs font-black px-3 py-2 rounded-lg transition-all border uppercase tracking-tighter cursor-pointer pointer-events-auto relative z-[101]',
+                                                                isInCompare(stock.ticker)
+                                                                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200 shadow-sm'
+                                                                    : 'text-[#1F2937] border-gray-200 hover:border-[#4F8DF7] hover:text-[#4F8DF7] hover:bg-gray-50'
+                                                            )}
+                                                        >
+                                                            {isInCompare(stock.ticker)
+                                                                ? <><CheckCircle2 size={13} /> Active</>
+                                                                : <><PlusCircle size={13} /> Compare</>
+                                                            }
+                                                        </button>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                                <button
+                                                                    disabled={isAdding === stock.ticker}
+                                                                    title="Add to Portfolio"
+                                                                    className={cn(
+                                                                        "flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg transition-all shadow-sm cursor-pointer uppercase tracking-tighter pointer-events-auto relative z-[101]",
+                                                                        isAdding === stock.ticker
+                                                                            ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                                                                            : "bg-[#2563EB] text-white border-[#2563EB] hover:bg-[#1D4ED8] hover:shadow-md"
+                                                                    )}
+                                                                >
+                                                                    {isAdding === stock.ticker ? (
+                                                                        <Loader2 size={13} className="animate-spin" />
+                                                                    ) : (
+                                                                        <PlusCircle size={13} />
+                                                                    )}
+                                                                    ADD
+                                                                </button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end" className="w-48 bg-white border border-gray-100 shadow-xl rounded-xl p-1 z-[110]" onClick={(e) => e.stopPropagation()}>
+                                                                {portfolios.length > 0 ? (
+                                                                    portfolios.map((portfolio) => (
+                                                                        <DropdownMenuItem
+                                                                            key={portfolio.id}
+                                                                            className="flex items-center gap-2 px-3 py-2 text-[11px] font-bold text-gray-700 hover:bg-blue-50 hover:text-[#2563EB] rounded-lg cursor-pointer transition-colors uppercase tracking-wider"
+                                                                            onSelect={() => {
+                                                                                handleQuickAdd(stock, portfolio.id, portfolio.name);
+                                                                            }}
+                                                                        >
+                                                                            <BriefcaseBusiness size={14} className="opacity-60" />
+                                                                            {portfolio.name}
+                                                                        </DropdownMenuItem>
+                                                                    ))
+                                                                ) : (
+                                                                    <div className="px-3 py-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center">
+                                                                        No Portfolios
+                                                                    </div>
+                                                                )}
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </>
+                                                ) : (
+                                                    <div className="w-full h-8 bg-gray-50/50 rounded-xl animate-pulse" />
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

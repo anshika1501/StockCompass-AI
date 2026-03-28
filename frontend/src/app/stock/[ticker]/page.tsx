@@ -15,9 +15,9 @@ import { formatInr, formatMoney, getUsdToInrRate, isUsd, toInrFromUsd } from "@/
 
 export const dynamic = 'force-dynamic';
 
-export default async function StockPage({ params, searchParams }: { params: { ticker: string }; searchParams: { from?: string } }) {
+export default async function StockPage({ params, searchParams }: { params: { ticker: string }; searchParams: { from?: string; market?: string } }) {
   const { ticker } = await params;
-  const { from: fromSector } = await searchParams || {};
+  const { from: fromSector, market } = await searchParams || {};
   const stock = await getStockByTicker(ticker);
 
   if (!stock) {
@@ -29,7 +29,13 @@ export default async function StockPage({ params, searchParams }: { params: { ti
   const isUsdStock = isUsd(stock.currency, stock.country);
   const formatInrIfUsd = (value: number) =>
     isUsdStock ? formatInr(toInrFromUsd(value, usdToInrRate)) : null;
-  const backHref = fromSector ? `/portfolio/${fromSector}` : '/';
+  const marketParam = market && ["usa", "india"].includes(market.toLowerCase())
+    ? market.toLowerCase()
+    : "";
+  const marketSuffix = marketParam ? `?market=${marketParam}` : "";
+  const backHref = fromSector
+    ? `/portfolio/${fromSector}${marketSuffix}`
+    : `/portfolios${marketSuffix}`;
   const backLabel = fromSector ? 'Back to Sector' : 'Back to Sectors';
 
   return (

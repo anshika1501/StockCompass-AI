@@ -524,7 +524,11 @@ export default function PortfolioAnalysis({
                                 {stocks.map((stock) => (
                                     <tr
                                         key={stock.symbol}
-                                        onClick={() => router.push(`/stock/${stock.symbol}?from=${sectorSlug}`)}
+                                        onClick={() =>
+                                            router.push(
+                                                `/stock/${stock.symbol}?from=${sectorSlug}${market ? `&market=${market}` : ''}`
+                                            )
+                                        }
                                         className="hover:bg-blue-50/20 transition-colors group cursor-pointer"
                                     >
                                         <td className="px-6 py-5 whitespace-nowrap">

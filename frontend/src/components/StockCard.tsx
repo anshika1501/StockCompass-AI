@@ -5,11 +5,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { Stock } from "@/lib/stock-data";
 
-export default function StockCard({ stock, sectorSlug }: { stock: Stock; sectorSlug?: string }) {
+export default function StockCard({ stock, sectorSlug, market }: { stock: Stock; sectorSlug?: string; market?: string }) {
   const isPositive = stock.change >= 0;
+  const query = new URLSearchParams();
+  if (sectorSlug) query.set("from", sectorSlug);
+  if (market) query.set("market", market);
+  const suffix = query.toString() ? `?${query.toString()}` : "";
 
   return (
-    <Link href={`/stock/${stock.ticker}${sectorSlug ? `?from=${sectorSlug}` : ''}`}>
+    <Link href={`/stock/${stock.ticker}${suffix}`}>
       <Card className="hover:shadow-lg transition-all duration-300 border border-gray-200 bg-white group rounded-xl">
         <CardContent className="p-6">
           <div className="flex justify-between items-start mb-6">
