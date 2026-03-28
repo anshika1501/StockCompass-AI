@@ -1,55 +1,55 @@
-name: Deploy Stock Project
+# name: Deploy Stock Project
 
-on:
-  push:
-    branches:
-      - main
+# on:
+#   push:
+#     branches:
+#       - main
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
 
-    steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
+#     steps:
+#       - name: Deploy via SSH
+#         uses: appleboy/ssh-action@v1.0.3
+#         with:
+#           host: ${{ secrets.HOST }}
+#           username: ${{ secrets.USERNAME }}
+#           key: ${{ secrets.SSH_KEY }}
 
-          script: |
-            echo "Loading Node..."
-            export NVM_DIR="$HOME/.nvm"
-            source $NVM_DIR/nvm.sh
+#           script: |
+#             echo "Loading Node..."
+#             export NVM_DIR="$HOME/.nvm"
+#             source $NVM_DIR/nvm.sh
 
-            echo "Go to project"
-            cd /home/anshu/dockers/Stock-3.0 || exit 1
+#             echo "Go to project"
+#             cd /home/anshu/dockers/Stock-3.0 || exit 1
 
-            echo "Pull latest code"
-            git pull origin main
+#             echo "Pull latest code"
+#             git pull origin main
 
-            echo "Backend update"
-            cd backend
+#             echo "Backend update"
+#             cd backend
 
-            if [ ! -d "venv" ]; then
-              python3 -m venv venv
-            fi
+#             if [ ! -d "venv" ]; then
+#               python3 -m venv venv
+#             fi
 
-            ./venv/bin/pip install -r requirements.txt
-            ./venv/bin/python manage.py migrate
+#             ./venv/bin/pip install -r requirements.txt
+#             ./venv/bin/python manage.py migrate
 
-            cd ..
+#             cd ..
 
-            echo "Frontend update"
-            cd frontend
+#             echo "Frontend update"
+#             cd frontend
 
-            npm install
-            npm run build
+#             npm install
+#             npm run build
 
-            cd ..
+#             cd ..
 
-            echo "Restart PM2"
-            pm2 restart stock-backend || echo "backend not found"
-            pm2 restart stock-frontend || echo "frontend not found"
+#             echo "Restart PM2"
+#             pm2 restart stock-backend || echo "backend not found"
+#             pm2 restart stock-frontend || echo "frontend not found"
 
-            echo "Done"
+#             echo "Done"

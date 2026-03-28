@@ -11,8 +11,10 @@ import { DashboardUserMenu } from "./DashboardUserMenu";
 export default function DashboardTopBar() {
   const [user, setUser] = useState<{ name: string; email?: string } | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
+    setHasMounted(true);
     function readUser() {
       const raw = localStorage.getItem("stock_compass_user");
       if (!raw) {
@@ -59,7 +61,9 @@ export default function DashboardTopBar() {
         <p className="min-w-0 flex-1 truncate text-center text-sm font-bold tracking-tight text-slate-900">
           StockCompass
         </p>
-        {user ? (
+        {!hasMounted ? (
+          <div className="h-8 w-20 animate-pulse rounded-lg bg-slate-100 md:hidden" />
+        ) : user ? (
           <div
             className="flex max-w-[6.5rem] shrink-0 items-center gap-1 rounded-lg bg-slate-50 py-1 pl-1.5 pr-2 ring-1 ring-slate-200/90 sm:max-w-[9rem]"
             title={user.email ?? user.name}
@@ -85,7 +89,9 @@ export default function DashboardTopBar() {
           <Home className="h-4 w-4" aria-hidden />
           Home
         </Link>
-        {user ? (
+        {!hasMounted ? (
+          <div className="h-10 w-32 animate-pulse rounded-full bg-slate-100" />
+        ) : user ? (
           <DashboardUserMenu variant="desktop" />
         ) : (
           <Link

@@ -99,7 +99,7 @@ export default function ChatbotPage() {
           <CardHeader className="space-y-2">
             <div className="flex items-center gap-2 text-slate-700">
               <MessageCircle className="h-5 w-5 text-blue-500" />
-              <CardTitle className="text-xl">StockCompass Chatbot</CardTitle>
+              <CardTitle className="text-xl">Finance Assistant</CardTitle>
             </div>
             <p className="text-sm text-slate-500">
               <strong>Product help</strong> answers how to use the app. <strong>Stock research</strong> uses your

@@ -16,8 +16,10 @@ const navLinks = [
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
+    setHasMounted(true);
     const handleScroll = () => setScrolled(window.scrollY > 12);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
@@ -38,7 +40,7 @@ export default function Navbar() {
         animate={{ y: 0 }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         className={`fixed top-0 z-50 w-full transition-[background,box-shadow,border-color,padding] duration-300 ${
-          scrolled
+          hasMounted && scrolled
             ? "border-b border-white/[0.07] bg-[#070a12]/85 py-3 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5)] backdrop-blur-xl backdrop-saturate-150"
             : "border-b border-transparent bg-transparent py-5 md:py-6"
         }`}

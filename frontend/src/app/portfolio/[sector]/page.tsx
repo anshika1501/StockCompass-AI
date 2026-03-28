@@ -1,12 +1,12 @@
 
 import { notFound } from "next/navigation";
 import Navigation from "@/components/Navigation";
-import StockCard from "@/components/StockCard";
 import PortfolioAnalysis from "@/components/PortfolioAnalysis";
 import { getStocksBySector } from "@/lib/stock-data";
-import { ChevronLeft, Filter, LayoutGrid } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Nifty50PCAClient from "@/app/nifty50-pca/Nifty50PCAClient";
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +24,7 @@ export default async function SectorPage({ params }: { params: { sector: string 
     notFound();
   }
 
-  const { sector, stocks } = sectorData;
+  const { sector } = sectorData;
 
   return (
     <div className="min-h-screen bg-white">
@@ -44,31 +44,38 @@ export default async function SectorPage({ params }: { params: { sector: string 
             </div>
             <p className="text-xl text-[#1F2937] font-normal opacity-85 leading-relaxed">{sector.description}</p>
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" size="lg" className="gap-2 bg-white border-gray-200 text-[#000000] font-semibold text-xs uppercase tracking-[0.12em] hover:bg-gray-50 rounded-xl px-6 h-12 shadow-sm">
-              <Filter className="h-4 w-4" /> Refine
-            </Button>
-            <Button variant="outline" size="lg" className="gap-2 bg-white border-gray-200 text-[#000000] font-semibold text-xs uppercase tracking-[0.12em] hover:bg-gray-50 rounded-xl px-6 h-12 shadow-sm">
-              <LayoutGrid className="h-4 w-4" /> Layout
-            </Button>
-          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-20">
-          {stocks.map((stock) => (
-            <StockCard key={stock.ticker} stock={stock} sectorSlug={sectorId} />
-          ))}
-        </div>
-
-        {stocks.length === 0 && (
-          <div className="text-center py-32 bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200">
-            <p className="text-[#1F2937] font-semibold uppercase tracking-[0.12em] text-sm opacity-50">No assets detected in this sector.</p>
-          </div>
-        )}
-
-        {/* Portfolio Analysis Section */}
-        <div className="mt-24 border-t border-gray-100 pt-20">
-           <PortfolioAnalysis sectorSlug={sectorId} />
+        {/* Sectors Analytics Tabs Section */}
+        <div className="mt-8">
+          <Tabs defaultValue="table" className="w-full">
+            <TabsList className="mb-8 w-full justify-start border-b rounded-none h-auto p-0 bg-transparent gap-8">
+              <TabsTrigger 
+                value="table" 
+                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none pb-3 border-b-2 border-transparent text-muted-foreground font-medium text-sm transition-all flex items-center gap-2"
+              >
+                <div className="h-4 w-4 flex items-center justify-center border rounded-[3px]">
+                  <div className="h-2 w-2 border-t border-l" />
+                </div>
+                Stocks Table
+              </TabsTrigger>
+              <TabsTrigger 
+                value="pca" 
+                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none pb-3 border-b-2 border-transparent text-muted-foreground font-medium text-sm transition-all flex items-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                PCA &amp; K-Means Clustering
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="table" className="mt-0 outline-none">
+               <PortfolioAnalysis sectorSlug={sectorId} />
+            </TabsContent>
+            
+            <TabsContent value="pca" className="mt-0 outline-none">
+              <Nifty50PCAClient sectorSlug={sectorId} sectorName={sector.name} />
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
     </div>

@@ -13,6 +13,7 @@ import {
   X,
   Loader2,
   Sparkles,
+  PieChart,
 } from "lucide-react";
 import {
   getPortfolios,
@@ -45,6 +46,7 @@ function MyPortfolioContent() {
   const addTickerParam = searchParams.get("addTicker");
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const [hasMounted, setHasMounted] = useState(false);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -81,6 +83,7 @@ function MyPortfolioContent() {
   const [isSavingPortfolioMeta, setIsSavingPortfolioMeta] = useState(false);
 
   useEffect(() => {
+    setHasMounted(true);
     setIsLoggedIn(!!getToken());
   }, []);
 
@@ -321,7 +324,13 @@ function MyPortfolioContent() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  if (isLoggedIn === null) return null;
+  if (!hasMounted) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-2 border-slate-200 border-t-[#4F8DF7]" />
+      </div>
+    );
+  }
 
   if (!isLoggedIn) {
     return (
@@ -379,6 +388,14 @@ function MyPortfolioContent() {
               Create books, edit metadata, and manage positions in one place.
             </p>
           </div>
+          <button
+            type="button"
+            onClick={() => router.push("/portfolios")}
+            className="inline-flex h-[42px] items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:border-[#4F8DF7]/40 hover:bg-blue-50 hover:text-[#4F8DF7]"
+          >
+            <PieChart className="h-4 w-4" />
+            Explore sectors
+          </button>
         </div>
 
         {error && (

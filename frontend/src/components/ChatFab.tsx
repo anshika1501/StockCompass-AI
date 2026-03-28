@@ -66,7 +66,7 @@ export default function ChatFab() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end pointer-events-none">
       <div
         className={`mb-4 flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-all duration-300 origin-bottom-right ${
           open ? "pointer-events-auto scale-100 opacity-100" : "pointer-events-none scale-50 opacity-0"
@@ -183,7 +183,7 @@ export default function ChatFab() {
 
       <button
         type="button"
-        className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-[#4F8DF7] text-white shadow-[0_10px_30px_rgba(79,141,247,0.4)] ring-offset-2 ring-[#4F8DF7]/20 transition-all duration-300 hover:scale-105 hover:bg-[#2563EB] focus:outline-none active:scale-95"
+        className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-[#4F8DF7] text-white shadow-[0_10px_30px_rgba(79,141,247,0.4)] ring-offset-2 ring-[#4F8DF7]/20 transition-all duration-300 hover:scale-105 hover:bg-[#2563EB] focus:outline-none active:scale-95 pointer-events-auto"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-label={open ? "Close help" : "Open help"}

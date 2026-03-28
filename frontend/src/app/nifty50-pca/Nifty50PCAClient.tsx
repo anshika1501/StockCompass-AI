@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
     ScatterChart,
     Scatter,
@@ -52,9 +53,13 @@ const CustomDot = (props: {
     cx?: number; cy?: number; payload?: Nifty50PCAPoint; fill?: string;
 }) => {
     const { cx = 0, cy = 0, payload, fill } = props;
+    const router = useRouter();
     if (!payload) return null;
     return (
-        <g>
+        <g
+            className="cursor-pointer"
+            onClick={() => router.push(`/stock/${payload.symbol}`)}
+        >
             <circle cx={cx} cy={cy} r={7} fill={fill} fillOpacity={0.85} stroke="#fff" strokeWidth={1.5} />
             <text
                 x={cx}
@@ -152,7 +157,8 @@ const LoadingBar = ({ value, color }: { value: number; color: string }) => (
 
 function simpleKMeans(points: number[][], k: number, maxIter = 150): number[] {
     const n = points.length;
-    if (n === 0 || k >= n) return points.map((_, i) => i);
+    if (n === 0) return [];
+    if (k >= n) return points.map((_, i) => i % k);
     // K-Means++ init
     const centroids: number[][] = [[...points[0]]];
     const used = new Set<number>([0]);
@@ -198,33 +204,41 @@ type DrillPoint = Nifty50PCAPoint & { pe_val: number; disc_val: number; subClust
 
 // ─── Main component ────────────────────────────────────────────────────────
 
-export default function Nifty50PCAClient() {
+export default function Nifty50PCAClient({ sectorSlug, sectorName }: { sectorSlug?: string; sectorName?: string }) {
+    const router = useRouter();
     const [data, setData] = useState<Nifty50PCAResult | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeK, setActiveK] = useState(4);
     const [pendingK, setPendingK] = useState(4);
+    const [maxKAllowed, setMaxKAllowed] = useState(8);
     const [hoveredCluster, setHoveredCluster] = useState<number | null>(null);
     const [sortField, setSortField] = useState<keyof Nifty50PCAPoint>("cluster");
     const [sortAsc, setSortAsc] = useState(true);
     const [drillCluster, setDrillCluster] = useState<number>(0);
-    const [drillK, setDrillK] = useState<number>(3);
+    const [drillK, setDrillK] = useState<number>(2);
 
     const load = (k: number) => {
         setLoading(true);
         setError(null);
-        fetchNifty50PCA(k)
+        fetchNifty50PCA(k, sectorSlug)
             .then((d) => {
                 setData(d);
-                setActiveK(k);
+                setActiveK(d.n_clusters);
+                setPendingK(d.n_clusters);
+                // Dynamically update max K based on received points
+                const count = d.points.length;
+                setMaxKAllowed(Math.max(2, Math.min(8, count)));
             })
             .catch((e) => setError(e?.message ?? "Failed to fetch data"))
             .finally(() => setLoading(false));
     };
 
     useEffect(() => {
-        load(4);
-    }, []);
+        // Initial load with defaults
+        load(sectorSlug ? 2 : 4);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sectorSlug]);
 
     // Group points by cluster index for separate <Scatter> series
     const byCluster: Nifty50PCAPoint[][] = data
@@ -342,11 +356,11 @@ export default function Nifty50PCAClient() {
                         <Activity className="h-3 w-3" />
                         Machine Learning
                     </span>
-                    <h1 className="text-3xl font-bold font-headline">Nifty 50 — Stock Analysis &amp; Clustering</h1>
+                    <h1 className="text-3xl font-bold font-headline">{sectorName || "Nifty 50"} — Stock Analysis &amp; Clustering</h1>
                 </div>
                 <p className="text-muted-foreground text-sm">
                     7 financial features per stock (returns, volatility, momentum, P/E, 52W position, discount, opportunity) →
-                    StandardScaler → PCA (2 components) → K-Means clustering. Each point is a Nifty 50 constituent.
+                    StandardScaler → PCA (2 components) → K-Means clustering. Each point is a {sectorName || "Nifty 50"} constituent.
                 </p>
             </div>
 
@@ -354,16 +368,16 @@ export default function Nifty50PCAClient() {
             <Card>
                 <CardContent className="pt-4 pb-4 flex flex-wrap items-center gap-4">
                     <span className="text-sm font-medium text-muted-foreground shrink-0">Clusters (K):</span>
-                    <div className="flex gap-1.5">
-                        {[2, 3, 4, 5, 6].map((k) => (
+                    <div className="flex gap-1.5 transition-all">
+                        {[2, 3, 4, 5, 6, 8].filter(k => k <= maxKAllowed).map((k) => (
                             <button
                                 key={k}
                                 onClick={() => setPendingK(k)}
                                 className={cn(
-                                    "w-9 h-9 rounded-full text-sm font-bold border transition-colors",
+                                    "w-9 h-9 rounded-full text-sm font-bold border transition-all",
                                     pendingK === k
-                                        ? "bg-primary text-primary-foreground border-primary"
-                                        : "border-border text-muted-foreground hover:border-primary hover:text-primary"
+                                        ? "bg-primary text-primary-foreground border-primary scale-110 shadow-md"
+                                        : "border-border text-muted-foreground hover:border-primary hover:text-primary active:scale-95"
                                 )}
                             >
                                 {k}
@@ -406,13 +420,23 @@ export default function Nifty50PCAClient() {
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-36 gap-4">
                     <Loader2 className="h-12 w-12 animate-spin text-indigo-500" />
-                    <p className="text-muted-foreground text-sm font-medium">Running PCA &amp; K-Means on Nifty 50…</p>
-                    <p className="text-muted-foreground text-xs">Fetching 1-year history for 50 stocks. First load takes ~20–40 seconds.</p>
+                    <p className="text-muted-foreground text-sm font-medium">Processing institutional data{sectorName ? ` for ${sectorName}` : '…'}</p>
+                    <p className="text-muted-foreground text-[11px] max-w-xs text-center leading-relaxed">
+                        We are performing multi-dimensional variance analysis and iterative cluster optimization. Initial processing for {sectorName ? 'new sectors' : 'index components'} typically completes within 20-30 seconds.
+                    </p>
                 </div>
             ) : error ? (
-                <div className="flex items-center gap-2 text-rose-500 bg-rose-50 border border-rose-200 rounded-xl px-5 py-6">
-                    <AlertCircle className="h-5 w-5 shrink-0" />
-                    <span>{error}</span>
+                <div className="flex flex-col items-center justify-center py-24 px-6 text-center border-2 border-dashed border-muted/50 rounded-2xl bg-secondary/10">
+                    <div className="bg-rose-100 p-3 rounded-full mb-4">
+                        <AlertCircle className="h-8 w-8 text-rose-600" />
+                    </div>
+                    <h3 className="text-lg font-bold text-foreground mb-2">Analysis Insight</h3>
+                    <p className="text-muted-foreground text-sm max-w-md leading-relaxed">{error}</p>
+                    {error.includes("2 stocks") && (
+                        <p className="text-xs text-muted-foreground mt-4 px-4 py-2 bg-white/50 rounded-lg border border-border">
+                            Professional Tip: Small sector populations may not exhibit meaningful clustering patterns. We recommend broadening your scope to the full index or related sectors for more robust statistical insights.
+                        </p>
+                    )}
                 </div>
             ) : data ? (
                 <>
@@ -691,7 +715,11 @@ export default function Nifty50PCAClient() {
                                             </thead>
                                             <tbody>
                                                 {drillChartPoints.map((p) => (
-                                                    <tr key={p.symbol} className="border-b border-border/30 hover:bg-secondary/40 transition-colors">
+                                                    <tr
+                                                        key={p.symbol}
+                                                        onClick={() => router.push(`/stock/${p.symbol}`)}
+                                                        className="border-b border-border/30 hover:bg-secondary/40 transition-colors cursor-pointer"
+                                                    >
                                                         <td className="py-1.5 font-mono font-bold text-left">
                                                             <div className="flex items-center gap-1.5">
                                                                 <div className="w-2 h-2 rounded-full shrink-0" style={{ background: CLUSTER_COLORS[p.subCluster] }} />
@@ -878,8 +906,9 @@ export default function Nifty50PCAClient() {
                                         return (
                                             <tr
                                                 key={p.symbol}
+                                                onClick={() => router.push(`/stock/${p.symbol}`)}
                                                 className={cn(
-                                                    "border-b border-border/30 hover:bg-secondary/40 transition-colors",
+                                                    "border-b border-border/30 hover:bg-secondary/40 transition-colors cursor-pointer",
                                                     hoveredCluster === p.cluster ? "bg-secondary/30" : "",
                                                     isBest ? "bg-amber-50/50" : ""
                                                 )}

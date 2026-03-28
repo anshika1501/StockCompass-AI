@@ -18,6 +18,9 @@ export interface Stock {
   sector: string;
   industry: string;
   description: string;
+  sentiment_score?: number | null;
+  sentiment_label?: 'BULLISH' | 'NEUTRAL' | 'BEARISH' | null;
+  sentiment_is_fallback?: boolean;
   website?: string;
   city?: string;
   country?: string;
@@ -137,6 +140,9 @@ export interface PortfolioAnalysisStock {
   discount_level: string;
   opportunity_score: number;
   sector: string;
+  sentiment_score?: number | null;
+  sentiment_label?: 'BULLISH' | 'NEUTRAL' | 'BEARISH' | null;
+  sentiment_is_fallback?: boolean;
 }
 
 export interface PortfolioAnalysisData {
@@ -524,8 +530,9 @@ export interface Nifty50PCAResult {
   loadings: Record<string, { pc1: number; pc2: number }>;
 }
 
-export async function fetchNifty50PCA(nClusters: number = 4): Promise<Nifty50PCAResult> {
-  return apiFetch<Nifty50PCAResult>(`/nifty50-pca/?n_clusters=${nClusters}`);
+export async function fetchNifty50PCA(nClusters: number = 4, sectorSlug?: string): Promise<Nifty50PCAResult> {
+  const url = sectorSlug ? `/nifty50-pca/?n_clusters=${nClusters}&sector=${sectorSlug}` : `/nifty50-pca/?n_clusters=${nClusters}`;
+  return apiFetch<Nifty50PCAResult>(url);
 }
 
 /** Format money with currency */

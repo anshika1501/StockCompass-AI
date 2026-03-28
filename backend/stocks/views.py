@@ -334,8 +334,39 @@ def all_stocks(request):
     GET /api/stocks/
     Returns all active stocks in frontend Stock interface shape.
     """
+    from .models import SentimentArticle
+    from django.db.models import Avg
+
     stocks = Stock.objects.filter(is_active=True)
-    data = [StockDataService.get_stock_as_frontend_shape(s) for s in stocks]
+    
+    # Fetch sentiment scores in bulk
+    sentiment_agg = (
+        SentimentArticle.objects
+        .values('ticker')
+        .annotate(avg_score=Avg('compound_score'))
+    )
+    sentiment_map = {row['ticker']: row['avg_score'] for row in sentiment_agg}
+    
+    # Global average as absolute fallback
+    global_avg = SentimentArticle.objects.aggregate(Avg('compound_score'))['compound_score__avg'] or 0.0
+
+    data = []
+    for s in stocks:
+        stock_data = StockDataService.get_stock_as_frontend_shape(s)
+        
+        # Add sentiment
+        raw_score = sentiment_map.get(s.symbol)
+        is_fallback = False
+        if raw_score is None:
+            raw_score = global_avg
+            is_fallback = True
+            
+        stock_data['sentiment_score'] = round(float(raw_score), 4)
+        stock_data['sentiment_label'] = 'BULLISH' if raw_score >= 0.05 else ('BEARISH' if raw_score <= -0.05 else 'NEUTRAL')
+        stock_data['sentiment_is_fallback'] = is_fallback
+            
+        data.append(stock_data)
+        
     return Response(data)
 
 
@@ -540,6 +571,31 @@ def nifty50_stocks(request):
             # yfinance unavailable but we have cached data — return stale rather than nothing
             result.append(StockDataService.get_stock_as_frontend_shape(stale_db_map[sym]))
 
+    # Inject sentiment in bulk
+    from .models import SentimentArticle
+    from django.db.models import Avg
+    sentiment_agg = (
+        SentimentArticle.objects
+        .filter(ticker__in=NIFTY_50_SYMBOLS)
+        .values('ticker')
+        .annotate(avg_score=Avg('compound_score'))
+    )
+    sentiment_map = {row['ticker']: row['avg_score'] for row in sentiment_agg}
+    
+    # Nifty 50 average fallback
+    nifty_avg = SentimentArticle.objects.filter(ticker__in=NIFTY_50_SYMBOLS).aggregate(Avg('compound_score'))['compound_score__avg'] or 0.0
+
+    for stock_data in result:
+        raw_score = sentiment_map.get(stock_data['ticker'])
+        is_fallback = False
+        if raw_score is None:
+            raw_score = nifty_avg
+            is_fallback = True
+            
+        stock_data['sentiment_score'] = round(float(raw_score), 4)
+        stock_data['sentiment_label'] = 'BULLISH' if raw_score >= 0.05 else ('BEARISH' if raw_score <= -0.05 else 'NEUTRAL')
+        stock_data['sentiment_is_fallback'] = is_fallback
+
     # Cache the result for subsequent fast loads
     if result:
         cache.set(CACHE_KEY, result, CACHE_TTL)
@@ -564,7 +620,39 @@ def stocks_by_sector(request, sector_slug):
             return Response({'error': 'Sector not found'}, status=status.HTTP_404_NOT_FOUND)
 
     stocks = Stock.objects.filter(category=category, is_active=True)
-    data = [StockDataService.get_stock_as_frontend_shape(s) for s in stocks]
+    
+    # Inject sentiment in bulk
+    from .models import SentimentArticle
+    from django.db.models import Avg
+    sentiment_agg = (
+        SentimentArticle.objects
+        .filter(sector=category.name)
+        .values('ticker')
+        .annotate(avg_score=Avg('compound_score'))
+    )
+    sentiment_map = {row['ticker']: row['avg_score'] for row in sentiment_agg}
+    
+    # Sector average fallback
+    sector_avg = SentimentArticle.objects.filter(sector=category.name).aggregate(Avg('compound_score'))['compound_score__avg']
+    if sector_avg is None:
+        sector_avg = 0.0
+
+    data = []
+    for s in stocks:
+        stock_data = StockDataService.get_stock_as_frontend_shape(s)
+        
+        # Sentiment logic with fallback
+        raw_score = sentiment_map.get(s.symbol)
+        is_fallback = False
+        if raw_score is None:
+            raw_score = sector_avg
+            is_fallback = True
+            
+        stock_data['sentiment_score'] = round(float(raw_score), 4)
+        stock_data['sentiment_label'] = 'BULLISH' if raw_score >= 0.05 else ('BEARISH' if raw_score <= -0.05 else 'NEUTRAL')
+        stock_data['sentiment_is_fallback'] = is_fallback
+        
+        data.append(stock_data)
 
     return Response({
         'sector': {
@@ -1694,7 +1782,21 @@ def nifty50_pca_clustering(request):
     except (TypeError, ValueError):
         n_clusters = 4
 
-    CACHE_KEY = f'nifty50_pca_k{n_clusters}'
+    sector_slug = request.query_params.get('sector')
+    symbols = NIFTY_50_SYMBOLS
+    if sector_slug:
+        from .models import StockCategory
+        try:
+            category = StockCategory.objects.get(slug=sector_slug)
+            target_stocks = category.stocks.filter(is_active=True)
+            if target_stocks.exists():
+                symbols = [s.symbol for s in target_stocks]
+        except StockCategory.DoesNotExist:
+            pass
+        except Exception:
+            pass
+
+    CACHE_KEY = f'pca_k{n_clusters}_{sector_slug or "nifty50"}'
     CACHE_TTL = 1800  # 30 minutes
 
     # Return cached result unless ?refresh=1
@@ -1702,11 +1804,14 @@ def nifty50_pca_clustering(request):
         cached = cache.get(CACHE_KEY)
         if cached is not None:
             return Response(cached)
+            
+    if not symbols:
+        return Response({'detail': 'No symbols found.'}, status=status.HTTP_400_BAD_REQUEST)
 
     # ── Batch download 1Y daily closes ───────────────────────────
     try:
         raw = yf.download(
-            NIFTY_50_SYMBOLS,
+            symbols,
             period='1y',
             interval='1d',
             group_by='ticker',
@@ -1741,7 +1846,7 @@ def nifty50_pca_clustering(request):
     feature_rows = []
     stock_meta = []
 
-    for sym in NIFTY_50_SYMBOLS:
+    for sym in symbols:
         try:
             close = _get_close(sym)
             if len(close) < 20:
@@ -1805,9 +1910,13 @@ def nifty50_pca_clustering(request):
             logger.warning(f"PCA feature extraction skipped {sym}: {ex}")
             continue
 
-    if len(feature_rows) < max(4, n_clusters):
+    # Relax requirement to 2 stocks. PCA can technically run on 2+ points (1 component).
+    # K-Means requires at least k points.
+    effective_k = min(n_clusters, len(feature_rows))
+    
+    if len(feature_rows) < 2:
         return Response(
-            {'detail': f'Only {len(feature_rows)} stocks had enough data (need ≥ {n_clusters}).'},
+            {'detail': f'Clustering requires at least 2 stocks with sufficient historical data. Currently, only {len(feature_rows)} stocks are eligible in this sector.'},
             status=status.HTTP_400_BAD_REQUEST
         )
 

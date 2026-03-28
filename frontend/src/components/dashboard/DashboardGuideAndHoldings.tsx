@@ -119,38 +119,53 @@ export default function DashboardGuideAndHoldings() {
         </div>
 
         <ol className="mt-5 space-y-3">
-          <li className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-[#4F8DF7] ring-1 ring-blue-100">
-              <BriefcaseBusiness className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-900">Explore sectors</p>
-              <p className="text-sm font-medium text-slate-600">
-                Browse sector cards to understand themes, then open a sector to view its stock list and analytics.
-              </p>
-            </div>
+          <li>
+            <Link
+              href="/portfolios"
+              className="group flex items-start gap-3 rounded-2xl p-2 transition-all hover:bg-slate-50 active:scale-[0.98]"
+            >
+              <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-[#4F8DF7] ring-1 ring-blue-100 group-hover:bg-[#4F8DF7] group-hover:text-white group-hover:ring-[#4F8DF7]">
+                <BriefcaseBusiness className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900 group-hover:text-[#4F8DF7]">Explore sectors</p>
+                <p className="text-sm font-medium text-slate-600">
+                  Browse sector cards to understand themes, then open a sector to view its stock list and analytics.
+                </p>
+              </div>
+            </Link>
           </li>
-          <li className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-[#4F8DF7] ring-1 ring-blue-100">
-              <PlusCircle className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-900">Build your portfolio</p>
-              <p className="text-sm font-medium text-slate-600">
-                Create a portfolio in <Link className="font-semibold text-[#4F8DF7] hover:underline" href="/my-portfolio">My Portfolio</Link>, then add holdings from stock pages.
-              </p>
-            </div>
+          <li>
+            <Link
+              href="/my-portfolio"
+              className="group flex items-start gap-3 rounded-2xl p-2 transition-all hover:bg-slate-50 active:scale-[0.98]"
+            >
+              <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-[#4F8DF7] ring-1 ring-blue-100 group-hover:bg-[#4F8DF7] group-hover:text-white group-hover:ring-[#4F8DF7]">
+                <PlusCircle className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900 group-hover:text-[#4F8DF7]">Build your portfolio</p>
+                <p className="text-sm font-medium text-slate-600">
+                  Create a portfolio in <span className="font-semibold text-[#4F8DF7] group-hover:underline">My Portfolio</span>, then add holdings from stock pages.
+                </p>
+              </div>
+            </Link>
           </li>
-          <li className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 text-violet-600 ring-1 ring-violet-100">
-              <Sparkles className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-900">Use AI tools</p>
-              <p className="text-sm font-medium text-slate-600">
-                PCA, Sentiment, Predictions, and Chatbot are available in the sidebar under AI Tools.
-              </p>
-            </div>
+          <li>
+            <Link
+              href="/stocks/pca-clustering"
+              className="group flex items-start gap-3 rounded-2xl p-2 transition-all hover:bg-slate-50 active:scale-[0.98]"
+            >
+              <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 text-violet-600 ring-1 ring-violet-100 group-hover:bg-violet-600 group-hover:text-white group-hover:ring-violet-600">
+                <Sparkles className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900 group-hover:text-violet-600">Use AI tools</p>
+                <p className="text-[11px] font-medium text-slate-500 mt-0.5">
+                  PCA, Sentiment, Predictions, and Chatbot are available in the sidebar under AI Tools.
+                </p>
+              </div>
+            </Link>
           </li>
         </ol>
 
