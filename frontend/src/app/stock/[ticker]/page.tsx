@@ -11,7 +11,16 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { formatInr, formatMoney, getUsdToInrRate, isUsd, toInrFromUsd } from "@/lib/currency";
+import {
+  formatInr,
+  formatMoney,
+  formatUsd,
+  getInrToUsdRate,
+  getUsdToInrRate,
+  isUsd,
+  toInrFromUsd,
+  toUsdFromInr,
+} from "@/lib/currency";
 
 export const dynamic = 'force-dynamic';
 
@@ -26,9 +35,12 @@ export default async function StockPage({ params, searchParams }: { params: { ti
 
   const isPositive = stock.change >= 0;
   const usdToInrRate = await getUsdToInrRate();
+  const inrToUsdRate = await getInrToUsdRate();
   const isUsdStock = isUsd(stock.currency, stock.country);
   const formatInrIfUsd = (value: number) =>
     isUsdStock ? formatInr(toInrFromUsd(value, usdToInrRate)) : null;
+  const formatUsdIfInr = (value: number) =>
+    !isUsdStock ? formatUsd(toUsdFromInr(value, inrToUsdRate)) : null;
   const marketParam = market && ["usa", "india"].includes(market.toLowerCase())
     ? market.toLowerCase()
     : "";
@@ -82,9 +94,13 @@ export default async function StockPage({ params, searchParams }: { params: { ti
                   <span className="text-lg font-bold text-amber-500 tracking-tight">
                     {formatMoney(stock.currentPrice, stock.currency, stock.country, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                   </span>
-                  {isUsdStock && (
+                  {isUsdStock ? (
                     <span className="text-[10px] text-slate-400 font-semibold">
                       ≈ {formatInrIfUsd(stock.currentPrice)}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-400 font-semibold">
+                      ≈ {formatUsdIfInr(stock.currentPrice)}
                     </span>
                   )}
                 </div>
@@ -145,9 +161,13 @@ export default async function StockPage({ params, searchParams }: { params: { ti
                         <p className="font-extrabold text-lg text-emerald-600 tracking-tight">
                           {formatMoney(stock.fiftyTwoWeekHigh, stock.currency, stock.country)}
                         </p>
-                        {isUsdStock && (
+                        {isUsdStock ? (
                           <p className="text-[10px] text-slate-400 font-semibold">
                             ≈ {formatInrIfUsd(stock.fiftyTwoWeekHigh)}
+                          </p>
+                        ) : (
+                          <p className="text-[10px] text-slate-400 font-semibold">
+                            ≈ {formatUsdIfInr(stock.fiftyTwoWeekHigh)}
                           </p>
                         )}
                       </div>
@@ -156,9 +176,13 @@ export default async function StockPage({ params, searchParams }: { params: { ti
                         <p className="font-extrabold text-lg text-rose-600 tracking-tight">
                           {formatMoney(stock.fiftyTwoWeekLow, stock.currency, stock.country)}
                         </p>
-                        {isUsdStock && (
+                        {isUsdStock ? (
                           <p className="text-[10px] text-slate-400 font-semibold">
                             ≈ {formatInrIfUsd(stock.fiftyTwoWeekLow)}
+                          </p>
+                        ) : (
+                          <p className="text-[10px] text-slate-400 font-semibold">
+                            ≈ {formatUsdIfInr(stock.fiftyTwoWeekLow)}
                           </p>
                         )}
                       </div>
@@ -187,9 +211,13 @@ export default async function StockPage({ params, searchParams }: { params: { ti
                   <span className="text-3xl font-extrabold text-slate-900 tracking-tighter">
                     {formatMoney(stock.currentPrice, stock.currency, stock.country, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                   </span>
-                  {isUsdStock && (
+                  {isUsdStock ? (
                     <span className="text-[11px] font-semibold text-slate-400">
                       ≈ {formatInrIfUsd(stock.currentPrice)}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-semibold text-slate-400">
+                      ≈ {formatUsdIfInr(stock.currentPrice)}
                     </span>
                   )}
                 </div>

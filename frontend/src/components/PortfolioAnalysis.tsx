@@ -24,7 +24,16 @@ import OpportunityBadge from "@/components/OpportunityBadge";
 import { fetchPortfolioAnalysis, type PortfolioAnalysisData, type PortfolioAnalysisStock } from "@/lib/stock-data";
 import { getPortfolios, addHolding, type Portfolio } from "@/lib/portfolio-data";
 import { useToast } from "@/hooks/use-toast";
-import { formatInr, formatMoney, getUsdToInrRate, isUsd, toInrFromUsd } from "@/lib/currency";
+import {
+    formatInr,
+    formatMoney,
+    formatUsd,
+    getInrToUsdRate,
+    getUsdToInrRate,
+    isUsd,
+    toInrFromUsd,
+    toUsdFromInr,
+} from "@/lib/currency";
 
 import {
     DropdownMenu,
@@ -331,12 +340,14 @@ export default function PortfolioAnalysis({
     const [isAdding, setIsAdding] = useState<string | null>(null);
     const [hasMounted, setHasMounted] = useState(false);
     const [usdToInrRate, setUsdToInrRate] = useState<number | null>(null);
+    const [inrToUsdRate, setInrToUsdRate] = useState<number | null>(null);
     const marketCurrency = data?.stocks?.find((s) => s.currency)?.currency;
     const marketCountry = data?.stocks?.find((s) => s.country)?.country;
 
     useEffect(() => {
         setHasMounted(true);
         getUsdToInrRate().then(setUsdToInrRate).catch(() => undefined);
+        getInrToUsdRate().then(setInrToUsdRate).catch(() => undefined);
         const loadPortfolios = async () => {
             try {
                 const list = await getPortfolios();
@@ -543,9 +554,13 @@ export default function PortfolioAnalysis({
                                         <td className="px-6 py-5 text-right font-bold text-[#000000] text-sm tracking-tight">
                                             <div className="flex flex-col items-end">
                                                 <span>{formatMoney(stock.current_price, stock.currency, stock.country)}</span>
-                                                {isUsd(stock.currency, stock.country) && (
+                                                {isUsd(stock.currency, stock.country) ? (
                                                     <span className="text-[10px] font-semibold text-slate-400">
                                                         ≈ {formatInr(toInrFromUsd(stock.current_price, usdToInrRate ?? undefined))}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] font-semibold text-slate-400">
+                                                        ≈ {formatUsd(toUsdFromInr(stock.current_price, inrToUsdRate ?? undefined))}
                                                     </span>
                                                 )}
                                             </div>
@@ -554,9 +569,13 @@ export default function PortfolioAnalysis({
                                             <div className="flex flex-col items-end">
                                                 <span className="text-[11px] font-semibold text-emerald-600 tracking-tight" title="52W High">↑ {formatMoney(stock.max_price, stock.currency, stock.country)}</span>
                                                 <span className="text-[11px] font-semibold text-rose-600 tracking-tight" title="52W Low">↓ {formatMoney(stock.min_price, stock.currency, stock.country)}</span>
-                                                {isUsd(stock.currency, stock.country) && (
+                                                {isUsd(stock.currency, stock.country) ? (
                                                     <span className="text-[9px] font-semibold text-slate-400">
                                                         ≈ {formatInr(toInrFromUsd(stock.max_price, usdToInrRate ?? undefined))} / {formatInr(toInrFromUsd(stock.min_price, usdToInrRate ?? undefined))}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[9px] font-semibold text-slate-400">
+                                                        ≈ {formatUsd(toUsdFromInr(stock.max_price, inrToUsdRate ?? undefined))} / {formatUsd(toUsdFromInr(stock.min_price, inrToUsdRate ?? undefined))}
                                                     </span>
                                                 )}
                                             </div>
@@ -577,11 +596,15 @@ export default function PortfolioAnalysis({
                                                         ? formatMoney(stock.expected_price, stock.currency, stock.country)
                                                         : '-'}
                                                 </span>
-                                                {stock.expected_price != null && isUsd(stock.currency, stock.country) && (
+                                                {stock.expected_price != null && (isUsd(stock.currency, stock.country) ? (
                                                     <span className="text-[10px] font-semibold text-slate-400">
                                                         ≈ {formatInr(toInrFromUsd(stock.expected_price, usdToInrRate ?? undefined))}
                                                     </span>
-                                                )}
+                                                ) : (
+                                                    <span className="text-[10px] font-semibold text-slate-400">
+                                                        ≈ {formatUsd(toUsdFromInr(stock.expected_price, inrToUsdRate ?? undefined))}
+                                                    </span>
+                                                ))}
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 text-center">
