@@ -203,7 +203,7 @@ type DrillPoint = Nifty50PCAPoint & { pe_val: number; disc_val: number; subClust
 
 // ─── Main component ────────────────────────────────────────────────────────
 
-export default function Nifty50PCAClient() {
+export default function Nifty50PCAClient({ sectorSlug, sectorName }: { sectorSlug?: string; sectorName?: string }) {
     const router = useRouter();
     const [data, setData] = useState<Nifty50PCAResult | null>(null);
     const [loading, setLoading] = useState(true);
@@ -219,7 +219,7 @@ export default function Nifty50PCAClient() {
     const load = (k: number) => {
         setLoading(true);
         setError(null);
-        fetchNifty50PCA(k)
+        fetchNifty50PCA(k, sectorSlug)
             .then((d) => {
                 setData(d);
                 setActiveK(k);
@@ -230,7 +230,8 @@ export default function Nifty50PCAClient() {
 
     useEffect(() => {
         load(4);
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sectorSlug]);
 
     // Group points by cluster index for separate <Scatter> series
     const byCluster: Nifty50PCAPoint[][] = data
@@ -348,11 +349,11 @@ export default function Nifty50PCAClient() {
                         <Activity className="h-3 w-3" />
                         Machine Learning
                     </span>
-                    <h1 className="text-3xl font-bold font-headline">Nifty 50 — Stock Analysis &amp; Clustering</h1>
+                    <h1 className="text-3xl font-bold font-headline">{sectorName || "Nifty 50"} — Stock Analysis &amp; Clustering</h1>
                 </div>
                 <p className="text-muted-foreground text-sm">
                     7 financial features per stock (returns, volatility, momentum, P/E, 52W position, discount, opportunity) →
-                    StandardScaler → PCA (2 components) → K-Means clustering. Each point is a Nifty 50 constituent.
+                    StandardScaler → PCA (2 components) → K-Means clustering. Each point is a {sectorName || "Nifty 50"} constituent.
                 </p>
             </div>
 
@@ -412,8 +413,8 @@ export default function Nifty50PCAClient() {
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-36 gap-4">
                     <Loader2 className="h-12 w-12 animate-spin text-indigo-500" />
-                    <p className="text-muted-foreground text-sm font-medium">Running PCA &amp; K-Means on Nifty 50…</p>
-                    <p className="text-muted-foreground text-xs">Fetching 1-year history for 50 stocks. First load takes ~20–40 seconds.</p>
+                    <p className="text-muted-foreground text-sm font-medium">Running PCA &amp; K-Means{sectorName ? ` on ${sectorName}` : '…'}</p>
+                    <p className="text-muted-foreground text-xs">Fetching history for {sectorName ? 'sector' : '50'} stocks. First load takes ~20–40 seconds.</p>
                 </div>
             ) : error ? (
                 <div className="flex items-center gap-2 text-rose-500 bg-rose-50 border border-rose-200 rounded-xl px-5 py-6">

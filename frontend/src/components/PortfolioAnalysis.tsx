@@ -329,7 +329,7 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
         loadPortfolios();
     }, []);
 
-    const handleQuickAdd = async (stock: PortfolioAnalysisStock, portfolioId?: string, portfolioName?: string) => {
+    const handleQuickAdd = async (stock: PortfolioAnalysisStock, portfolioId?: number, portfolioName?: string) => {
         if (portfolios.length === 0) {
             toast({
                 title: "No portfolios found",
@@ -345,13 +345,13 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
         setIsAdding(stock.symbol);
 
         try {
-            await addHolding({
-                portfolio: targetPortfolioId,
-                ticker: stock.symbol,
-                company_name: stock.company_name,
-                quantity: 1,
-                buy_price: stock.current_price || 0,
-            });
+            await addHolding(
+                Number(targetPortfolioId),
+                stock.symbol,
+                stock.company_name,
+                1,
+                stock.current_price || 0
+            );
             
             toast({
                 title: "Success",

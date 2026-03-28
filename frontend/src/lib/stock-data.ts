@@ -524,8 +524,9 @@ export interface Nifty50PCAResult {
   loadings: Record<string, { pc1: number; pc2: number }>;
 }
 
-export async function fetchNifty50PCA(nClusters: number = 4): Promise<Nifty50PCAResult> {
-  return apiFetch<Nifty50PCAResult>(`/nifty50-pca/?n_clusters=${nClusters}`);
+export async function fetchNifty50PCA(nClusters: number = 4, sectorSlug?: string): Promise<Nifty50PCAResult> {
+  const url = sectorSlug ? `/nifty50-pca/?n_clusters=${nClusters}&sector=${sectorSlug}` : `/nifty50-pca/?n_clusters=${nClusters}`;
+  return apiFetch<Nifty50PCAResult>(url);
 }
 
 /** Format money with currency */

@@ -5,20 +5,38 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "rec
 import { useState } from "react";
 import { ArrowUpRight, BarChart2, TrendingUp, AlertTriangle } from "lucide-react";
 
-const getMockData = () => {
-  const data = [];
-  let value = 10000;
-  for (let i = 0; i < 30; i++) {
-    value += Math.random() * 500 - 200;
-    data.push({
-      day: `${i + 1}`,
-      value: Number(value.toFixed(2)),
-    });
-  }
-  return data;
-};
-
-const mockData = getMockData();
+const mockData = [
+  { day: '1', value: 10000.00 },
+  { day: '2', value: 10125.40 },
+  { day: '3', value: 10050.20 },
+  { day: '4', value: 10210.85 },
+  { day: '5', value: 10180.15 },
+  { day: '6', value: 10350.60 },
+  { day: '7', value: 10290.30 },
+  { day: '8', value: 10500.90 },
+  { day: '9', value: 10450.40 },
+  { day: '10', value: 10620.10 },
+  { day: '11', value: 10580.75 },
+  { day: '12', value: 10740.20 },
+  { day: '13', value: 10690.80 },
+  { day: '14', value: 10810.30 },
+  { day: '15', value: 10760.50 },
+  { day: '16', value: 10920.90 },
+  { day: '17', value: 10850.40 },
+  { day: '18', value: 11050.20 },
+  { day: '19', value: 10980.60 },
+  { day: '20', value: 11150.30 },
+  { day: '21', value: 11110.80 },
+  { day: '22', value: 11280.40 },
+  { day: '23', value: 11235.10 },
+  { day: '24', value: 11420.70 },
+  { day: '25', value: 11380.20 },
+  { day: '26', value: 11550.60 },
+  { day: '27', value: 11510.90 },
+  { day: '28', value: 11680.10 },
+  { day: '29', value: 11620.40 },
+  { day: '30', value: 11800.50 },
+];
 
 export default function LivePreview() {
   const [activeTab, setActiveTab] = useState("1M");

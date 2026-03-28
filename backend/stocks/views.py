@@ -1504,7 +1504,21 @@ def nifty50_pca_clustering(request):
     except (TypeError, ValueError):
         n_clusters = 4
 
-    CACHE_KEY = f'nifty50_pca_k{n_clusters}'
+    sector_slug = request.query_params.get('sector')
+    symbols = NIFTY_50_SYMBOLS
+    if sector_slug:
+        from .models import StockCategory
+        try:
+            category = StockCategory.objects.get(slug=sector_slug)
+            target_stocks = category.stocks.filter(is_active=True)
+            if target_stocks.exists():
+                symbols = [s.symbol for s in target_stocks]
+        except StockCategory.DoesNotExist:
+            pass
+        except Exception:
+            pass
+
+    CACHE_KEY = f'pca_k{n_clusters}_{sector_slug or "nifty50"}'
     CACHE_TTL = 1800  # 30 minutes
 
     # Return cached result unless ?refresh=1
@@ -1512,11 +1526,14 @@ def nifty50_pca_clustering(request):
         cached = cache.get(CACHE_KEY)
         if cached is not None:
             return Response(cached)
+            
+    if not symbols:
+        return Response({'detail': 'No symbols found.'}, status=status.HTTP_400_BAD_REQUEST)
 
     # ── Batch download 1Y daily closes ───────────────────────────
     try:
         raw = yf.download(
-            NIFTY_50_SYMBOLS,
+            symbols,
             period='1y',
             interval='1d',
             group_by='ticker',
@@ -1551,7 +1568,7 @@ def nifty50_pca_clustering(request):
     feature_rows = []
     stock_meta = []
 
-    for sym in NIFTY_50_SYMBOLS:
+    for sym in symbols:
         try:
             close = _get_close(sym)
             if len(close) < 20:

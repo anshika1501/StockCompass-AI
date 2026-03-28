@@ -89,10 +89,10 @@ export function DashboardUserMenu({ variant }: { variant: "desktop" | "mobile" }
         name: draftName.trim(),
         email: draftEmail.trim(),
       });
-      const merged: UserShape = {
+    const merged: UserShape = {
         ...user,
         ...updated,
-        id: updated.id ?? user.id,
+        id: updated?.id ?? user?.id,
       };
       persistUser(merged);
       setUser(merged);

@@ -53,7 +53,7 @@ export default function StocksTable({ stocks, sortable = true, sectorSlug }: Sto
         loadPortfolios();
     }, []);
 
-    const handleQuickAdd = async (stock: Stock, portfolioId?: string, portfolioName?: string) => {
+    const handleQuickAdd = async (stock: Stock, portfolioId?: number, portfolioName?: string) => {
         if (portfolios.length === 0) {
             toast({
                 title: "No portfolios found",
@@ -69,13 +69,13 @@ export default function StocksTable({ stocks, sortable = true, sectorSlug }: Sto
         setIsAdding(stock.ticker);
 
         try {
-            await addHolding({
-                portfolio: targetPortfolioId,
-                ticker: stock.ticker,
-                company_name: stock.name,
-                quantity: 1,
-                buy_price: stock.currentPrice || 0,
-            });
+            await addHolding(
+                Number(targetPortfolioId),
+                stock.ticker,
+                stock.name,
+                1,
+                stock.currentPrice || 0
+            );
             
             toast({
                 title: "Success",

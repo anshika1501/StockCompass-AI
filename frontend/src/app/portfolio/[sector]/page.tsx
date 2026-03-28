@@ -5,6 +5,8 @@ import PortfolioAnalysis from "@/components/PortfolioAnalysis";
 import { getStocksBySector } from "@/lib/stock-data";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Nifty50PCAClient from "@/app/nifty50-pca/Nifty50PCAClient";
 
 export const dynamic = 'force-dynamic';
 
@@ -44,9 +46,36 @@ export default async function SectorPage({ params }: { params: { sector: string 
           </div>
         </div>
 
-        {/* Sectors Analytics Table Section */}
+        {/* Sectors Analytics Tabs Section */}
         <div className="mt-8">
-           <PortfolioAnalysis sectorSlug={sectorId} />
+          <Tabs defaultValue="table" className="w-full">
+            <TabsList className="mb-8 w-full justify-start border-b rounded-none h-auto p-0 bg-transparent gap-8">
+              <TabsTrigger 
+                value="table" 
+                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none pb-3 border-b-2 border-transparent text-muted-foreground font-medium text-sm transition-all flex items-center gap-2"
+              >
+                <div className="h-4 w-4 flex items-center justify-center border rounded-[3px]">
+                  <div className="h-2 w-2 border-t border-l" />
+                </div>
+                Stocks Table
+              </TabsTrigger>
+              <TabsTrigger 
+                value="pca" 
+                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none pb-3 border-b-2 border-transparent text-muted-foreground font-medium text-sm transition-all flex items-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                PCA &amp; K-Means Clustering
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="table" className="mt-0 outline-none">
+               <PortfolioAnalysis sectorSlug={sectorId} />
+            </TabsContent>
+            
+            <TabsContent value="pca" className="mt-0 outline-none">
+              <Nifty50PCAClient sectorSlug={sectorId} sectorName={sector.name} />
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
     </div>

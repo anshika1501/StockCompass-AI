@@ -32,10 +32,10 @@ const marketItems: SidebarItem[] = [
 ];
 
 const aiToolItems: SidebarItem[] = [
-  { label: "Stock Analysis (PCA)", href: "/nifty50-pca", icon: Orbit },
-  { label: "Sentiment Analysis", href: "/sentiment", icon: MessageCircle },
-  { label: "Stock Prediction", href: "/stock-prediction", icon: BarChart3 },
-  { label: "Chatbot", href: "/chatbot", icon: Bot },
+  { label: "PCA & K-Means Clustering", href: "/stocks/pca-clustering", icon: Orbit },
+  { label: "Sentiment AI", href: "/sentiment", icon: MessageCircle },
+  { label: "Model Predictions", href: "/stocks/predictions", icon: BarChart3 },
+  { label: "Finance Assistant", href: "/chatbot", icon: Bot },
 ];
 
 export default function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {

@@ -489,7 +489,7 @@ export default function SentimentAnalysisPage() {
         <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-              AI Market Sentiment
+              Sentiment AI
             </h1>
             <p className="mt-1 text-sm font-medium text-slate-500">
               Daily news sentiment scored by VADER across all Nifty 500 sectors.
