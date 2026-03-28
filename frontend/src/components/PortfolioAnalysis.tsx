@@ -304,7 +304,13 @@ function PairScatterChart({
 
 // ─── Main Component ──────────────────────────────────────────────────────
 
-export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }) {
+export default function PortfolioAnalysis({
+    sectorSlug,
+    market,
+}: {
+    sectorSlug: string;
+    market?: string;
+}) {
     const [data, setData] = useState<PortfolioAnalysisData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -352,7 +358,7 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                 1,
                 stock.current_price || 0
             );
-            
+
             toast({
                 title: "Success",
                 description: `${stock.symbol} added to ${targetPortfolioName}`,
@@ -374,7 +380,7 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
             setLoading(true);
             setError("");
             try {
-                const result = await fetchPortfolioAnalysis(sectorSlug);
+                const result = await fetchPortfolioAnalysis(sectorSlug, market);
                 if (active) setData(result);
             } catch {
                 if (active) setError("Failed to load portfolio analysis.");
@@ -384,7 +390,7 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
         };
         if (sectorSlug) loadData();
         return () => { active = false; };
-    }, [sectorSlug]);
+    }, [sectorSlug, market]);
 
     // Compute K-Means clustering + silhouette score for all 6 feature pairs
     const pairResults = useMemo(() => {
@@ -511,8 +517,8 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                         <td className="px-6 py-5 whitespace-nowrap">
                                             <div className="flex flex-col">
                                                 <div className="flex items-center gap-2">
-                                                  <span className="font-bold text-[#4F8DF7] text-sm tracking-tight">{stock.symbol}</span>
-                                                  <Badge variant="outline" className="text-[9px] px-1 py-0 border-gray-100 text-gray-400 font-semibold">{stock.sector || 'N/A'}</Badge>
+                                                    <span className="font-bold text-[#4F8DF7] text-sm tracking-tight">{stock.symbol}</span>
+                                                    <Badge variant="outline" className="text-[9px] px-1 py-0 border-gray-100 text-gray-400 font-semibold">{stock.sector || 'N/A'}</Badge>
                                                 </div>
                                                 <span className="text-[11px] font-medium text-gray-500 uppercase truncate max-w-[180px]">{stock.company_name}</span>
                                             </div>
@@ -528,11 +534,11 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                         </td>
                                         <td className="px-6 py-5 text-right">
                                             <div className="flex flex-col items-end">
-                                              <span className="text-[11px] font-bold text-gray-900 tracking-tight">{stock.pe_ratio != null ? stock.pe_ratio.toFixed(2) : '-'}</span>
-                                              <div className="flex items-center gap-1">
-                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">AVG:</span>
-                                                <span className="text-[10px] font-semibold text-gray-500 tracking-tight">{stock.pe_avg != null ? stock.pe_avg.toFixed(2) : '-'}</span>
-                                              </div>
+                                                <span className="text-[11px] font-bold text-gray-900 tracking-tight">{stock.pe_ratio != null ? stock.pe_ratio.toFixed(2) : '-'}</span>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">AVG:</span>
+                                                    <span className="text-[10px] font-semibold text-gray-500 tracking-tight">{stock.pe_avg != null ? stock.pe_avg.toFixed(2) : '-'}</span>
+                                                </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 text-right">
@@ -562,8 +568,8 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                                         <span className={cn(
                                                             "text-[10px] font-bold px-2 py-0.5 rounded-md border",
                                                             stock.sentiment_label === 'BULLISH' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
-                                                            stock.sentiment_label === 'BEARISH' ? "bg-rose-50 text-rose-700 border-rose-100" :
-                                                            "bg-gray-50 text-gray-600 border-gray-100"
+                                                                stock.sentiment_label === 'BEARISH' ? "bg-rose-50 text-rose-700 border-rose-100" :
+                                                                    "bg-gray-50 text-gray-600 border-gray-100"
                                                         )}>
                                                             {stock.sentiment_label}
                                                         </span>
@@ -613,7 +619,7 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                                                     title="Add to Portfolio"
                                                                     className={cn(
                                                                         "flex items-center gap-2 text-[10px] font-bold px-4 py-2 rounded-xl transition-all uppercase tracking-[0.12em] shadow-sm cursor-pointer pointer-events-auto relative z-[101]",
-                                                                        isAdding === stock.symbol 
+                                                                        isAdding === stock.symbol
                                                                             ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
                                                                             : "bg-[#2563EB] text-white border-[#2563EB] hover:bg-[#1D4ED8] hover:shadow-md"
                                                                     )}

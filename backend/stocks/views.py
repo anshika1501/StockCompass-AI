@@ -314,16 +314,23 @@ def sector_list(request):
     GET /api/sectors/
     Returns all categories in {id, name, description, icon, image} shape.
     """
-    categories = StockCategory.objects.all()
+    market = request.query_params.get('market', '').strip().lower()
+    categories = StockCategory.objects.filter(stocks__is_active=True)
+    if market in {'india', 'usa'}:
+        categories = categories.filter(stocks__country__iexact=market)
+    categories = categories.distinct()
     data = []
     for cat in categories:
+        stock_qs = cat.stocks.filter(is_active=True)
+        if market in {'india', 'usa'}:
+            stock_qs = stock_qs.filter(country__iexact=market)
         data.append({
             'id': cat.slug or cat.name.lower().replace(' ', '-'),
             'name': cat.name,
             'description': cat.description or '',
             'icon': cat.icon or 'trending-up',
             'image': cat.image or '',
-            'stockCount': cat.stocks.filter(is_active=True).count(),
+            'stockCount': stock_qs.count(),
         })
     return Response(data)
 
@@ -609,6 +616,7 @@ def stocks_by_sector(request, sector_slug):
     GET /api/sectors/<slug>/stocks/
     Returns stocks for a sector in frontend Stock interface shape.
     """
+    market = request.query_params.get('market', '').strip().lower()
     try:
         category = StockCategory.objects.get(slug=sector_slug)
     except StockCategory.DoesNotExist:
@@ -620,6 +628,8 @@ def stocks_by_sector(request, sector_slug):
             return Response({'error': 'Sector not found'}, status=status.HTTP_404_NOT_FOUND)
 
     stocks = Stock.objects.filter(category=category, is_active=True)
+    if market in {'india', 'usa'}:
+        stocks = stocks.filter(country__iexact=market)
     
     # Inject sentiment in bulk
     from .models import SentimentArticle
@@ -858,7 +868,9 @@ def portfolio_analysis(request, sector_slug):
     GET /api/sectors/<slug>/analysis/
     Run portfolio analysis with PE ratio, discount level, opportunity score, and correlation.
     """
-    data = run_portfolio_analysis(sector_slug)
+    market = request.query_params.get('market', '').strip().lower()
+    country = market if market in {'india', 'usa'} else None
+    data = run_portfolio_analysis(sector_slug, country=country)
     return Response(data)
 
 

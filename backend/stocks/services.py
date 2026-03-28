@@ -223,23 +223,24 @@ class StockDataService:
             logger.error("Failed to read USA200 CSV: %s", exc)
             return None
 
-        required = {"Symbol", "Company"}
+        required = {"Symbol", "Company", "Industry"}
         if not required.issubset(set(df.columns)):
             logger.error("USA200 CSV missing required columns: %s", required)
             return None
 
         categories = {}
-        category_name = "USA Market"
         for _, row in df.iterrows():
             country = str(row.get("Country", "USA")).strip() or "USA"
             symbol = _normalize_symbol(str(row.get("Symbol", "")), country)
             if not symbol:
                 continue
             company_name = str(row.get("Company", "")).strip()
+            industry = str(row.get("Industry", "")).strip()
+            category_name = _map_industry_to_category(industry)
             categories.setdefault(category_name, []).append({
                 "symbol": symbol,
                 "name": company_name,
-                "industry": "",
+                "industry": industry,
                 "country": country,
             })
 
@@ -326,6 +327,8 @@ class StockDataService:
                             if stock_created:
                                 logger.info(f"Created stock: {symbol}")
                             else:
+                                if stock.category_id != category.id:
+                                    stock.category = category
                                 for key in ('name', 'exchange', 'sector', 'industry',
                                             'market_cap', 'current_price', 'previous_close',
                                             'fifty_two_week_high', 'fifty_two_week_low',

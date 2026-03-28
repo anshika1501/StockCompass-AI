@@ -25,7 +25,6 @@ const mainItems: SidebarItem[] = [
 ];
 
 const marketItems: SidebarItem[] = [
-  { label: "Sectors", href: "/portfolios", icon: BriefcaseBusiness },
   { label: "Nifty 50", href: "/stocks", icon: LineChart },
   { label: "Bitcoin, Gold & Silver", href: "/gold-silver", icon: Bitcoin },
   { label: "Compare Assets", href: "/compare", icon: Scale },
@@ -83,6 +82,29 @@ export default function SidebarNav({ onNavigate }: { onNavigate?: () => void }) 
               </span>
             </AccordionTrigger>
             <AccordionContent className="space-y-1 pb-2">
+              <div className="space-y-1">
+                <SidebarMenuItem
+                  item={{ label: "Sectors", href: "/portfolios", icon: BriefcaseBusiness }}
+                  compact
+                  onNavigate={onNavigate}
+                />
+                <div className="ml-6 space-y-1">
+                  <Link
+                    href="/portfolios?market=india"
+                    onClick={onNavigate}
+                    className="flex items-center gap-2 rounded-md px-2 py-1 text-xs font-semibold text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+                  >
+                    India
+                  </Link>
+                  <Link
+                    href="/portfolios?market=usa"
+                    onClick={onNavigate}
+                    className="flex items-center gap-2 rounded-md px-2 py-1 text-xs font-semibold text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+                  >
+                    USA
+                  </Link>
+                </div>
+              </div>
               {marketItems.map((item) => (
                 <SidebarMenuItem key={item.href} item={item} compact onNavigate={onNavigate} />
               ))}

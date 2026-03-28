@@ -204,9 +204,12 @@ async function apiFetch<T>(path: string): Promise<T> {
 }
 
 /** Fetch all sectors (categories) */
-export async function getSectors(): Promise<Sector[]> {
+export async function getSectors(market?: string): Promise<Sector[]> {
   try {
-    return await apiFetch<Sector[]>('/sectors/');
+    const params = new URLSearchParams();
+    if (market) params.set('market', market);
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    return await apiFetch<Sector[]>(`/sectors/${suffix}`);
   } catch {
     return [];
   }
@@ -226,8 +229,14 @@ export async function getNifty50Stocks(): Promise<Stock[]> {
 }
 
 /** Fetch stocks for a sector + sector meta */
-export async function getStocksBySector(sectorSlug: string): Promise<{ sector: Sector; stocks: Stock[] }> {
-  return apiFetch<{ sector: Sector; stocks: Stock[] }>(`/sectors/${sectorSlug}/stocks/`);
+export async function getStocksBySector(
+  sectorSlug: string,
+  market?: string
+): Promise<{ sector: Sector; stocks: Stock[] }> {
+  const params = new URLSearchParams();
+  if (market) params.set('market', market);
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  return apiFetch<{ sector: Sector; stocks: Stock[] }>(`/sectors/${sectorSlug}/stocks/${suffix}`);
 }
 
 /** Fetch full stock detail (with history) */
@@ -300,8 +309,14 @@ export async function fetchLiveStockComparison(
 }
 
 /** Fetch portfolio analysis for a sector */
-export async function fetchPortfolioAnalysis(sectorSlug: string): Promise<PortfolioAnalysisData> {
-  return apiFetch<PortfolioAnalysisData>(`/sectors/${sectorSlug}/analysis/`);
+export async function fetchPortfolioAnalysis(
+  sectorSlug: string,
+  market?: string
+): Promise<PortfolioAnalysisData> {
+  const params = new URLSearchParams();
+  if (market) params.set('market', market);
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  return apiFetch<PortfolioAnalysisData>(`/sectors/${sectorSlug}/analysis/${suffix}`);
 }
 
 /** Linear regression analysis for two stocks */
