@@ -24,6 +24,7 @@ import OpportunityBadge from "@/components/OpportunityBadge";
 import { fetchPortfolioAnalysis, type PortfolioAnalysisData, type PortfolioAnalysisStock } from "@/lib/stock-data";
 import { getPortfolios, addHolding, type Portfolio } from "@/lib/portfolio-data";
 import { useToast } from "@/hooks/use-toast";
+import { formatInr, formatMoney, getUsdToInrRate, isUsd, toInrFromUsd } from "@/lib/currency";
 
 import {
     DropdownMenu,
@@ -177,23 +178,27 @@ const ClusterDot = (props: unknown) => {
 // ─── Axis tick formatters ─────────────────────────────────────────────────
 
 const discTickFmt = (v: number) => DISC_LABEL[Math.round(v)] ?? "";
-const priceFmt = (v: number) => `₹${(v / 1000).toFixed(0)}k`;
+const priceFmt = (v: number, currency?: string, country?: string) => {
+    if (isUsd(currency, country)) return `$${(v / 1000).toFixed(0)}k`;
+    return `₹${(v / 1000).toFixed(0)}k`;
+};
 const numFmt = (v: number) => Number(v).toFixed(0);
 
-function xFmtFor(key: FKey): (v: number) => string {
+function xFmtFor(key: FKey, currency?: string, country?: string): (v: number) => string {
     if (key === "discount_enc") return discTickFmt;
-    if (key === "current_price") return priceFmt;
+    if (key === "current_price") return (v: number) => priceFmt(v, currency, country);
     return numFmt;
 }
-function yFmtFor(key: FKey): (v: number) => string {
+function yFmtFor(key: FKey, currency?: string, country?: string): (v: number) => string {
     if (key === "discount_enc") return discTickFmt;
+    if (key === "current_price") return (v: number) => priceFmt(v, currency, country);
     return numFmt;
 }
 
 // ─── PairScatterChart sub-component ──────────────────────────────────────
 
 function PairScatterChart({
-    pair, points, clusterK, silhouette, isBest, compact, hideHeader,
+    pair, points, clusterK, silhouette, isBest, compact, hideHeader, currency, country,
 }: {
     pair: typeof FEATURE_PAIRS[0];
     points: ClusterPt[];
@@ -202,13 +207,15 @@ function PairScatterChart({
     isBest: boolean;
     compact?: boolean;
     hideHeader?: boolean;
+    currency?: string;
+    country?: string;
 }) {
     const chartH = compact ? 200 : 270;
     const byCluster = Array.from({ length: clusterK }, (_, ci) => points.filter(p => p.cluster === ci));
     const isDiscY = pair.yKey === "discount_enc";
     const isDiscX = pair.xKey === "discount_enc";
-    const xFmt = xFmtFor(pair.xKey);
-    const yFmt = yFmtFor(pair.yKey);
+    const xFmt = xFmtFor(pair.xKey, currency, country);
+    const yFmt = yFmtFor(pair.yKey, currency, country);
 
     return (
         <div className={cn(
@@ -263,11 +270,13 @@ function PairScatterChart({
                             const xDisplay = isDiscX
                                 ? (DISC_LABEL[Math.round(d.x)] ?? String(d.x))
                                 : pair.xKey === "current_price"
-                                    ? `₹${d.x.toLocaleString()}`
+                                    ? formatMoney(d.x, currency, country)
                                     : d.x.toFixed(1);
                             const yDisplay = isDiscY
                                 ? (DISC_LABEL[Math.round(d.y)] ?? String(d.y))
-                                : d.y.toFixed(1);
+                                : pair.yKey === "current_price"
+                                    ? formatMoney(d.y, currency, country)
+                                    : d.y.toFixed(1);
                             return (
                                 <div className="bg-white border border-border rounded-lg shadow-lg p-2 text-xs z-50 min-w-[140px]">
                                     <div className="font-bold text-primary mb-0.5">{d.symbol}</div>
@@ -321,9 +330,13 @@ export default function PortfolioAnalysis({
     const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
     const [isAdding, setIsAdding] = useState<string | null>(null);
     const [hasMounted, setHasMounted] = useState(false);
+    const [usdToInrRate, setUsdToInrRate] = useState<number | null>(null);
+    const marketCurrency = data?.stocks?.find((s) => s.currency)?.currency;
+    const marketCountry = data?.stocks?.find((s) => s.country)?.country;
 
     useEffect(() => {
         setHasMounted(true);
+        getUsdToInrRate().then(setUsdToInrRate).catch(() => undefined);
         const loadPortfolios = async () => {
             try {
                 const list = await getPortfolios();
@@ -524,12 +537,24 @@ export default function PortfolioAnalysis({
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 text-right font-bold text-[#000000] text-sm tracking-tight">
-                                            ₹{stock.current_price?.toLocaleString() ?? '-'}
+                                            <div className="flex flex-col items-end">
+                                                <span>{formatMoney(stock.current_price, stock.currency, stock.country)}</span>
+                                                {isUsd(stock.currency, stock.country) && (
+                                                    <span className="text-[10px] font-semibold text-slate-400">
+                                                        ≈ {formatInr(toInrFromUsd(stock.current_price, usdToInrRate ?? undefined))}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-6 py-5 text-right">
                                             <div className="flex flex-col items-end">
-                                                <span className="text-[11px] font-semibold text-emerald-600 tracking-tight" title="52W High">↑ ₹{stock.max_price?.toLocaleString() ?? '-'}</span>
-                                                <span className="text-[11px] font-semibold text-rose-600 tracking-tight" title="52W Low">↓ ₹{stock.min_price?.toLocaleString() ?? '-'}</span>
+                                                <span className="text-[11px] font-semibold text-emerald-600 tracking-tight" title="52W High">↑ {formatMoney(stock.max_price, stock.currency, stock.country)}</span>
+                                                <span className="text-[11px] font-semibold text-rose-600 tracking-tight" title="52W Low">↓ {formatMoney(stock.min_price, stock.currency, stock.country)}</span>
+                                                {isUsd(stock.currency, stock.country) && (
+                                                    <span className="text-[9px] font-semibold text-slate-400">
+                                                        ≈ {formatInr(toInrFromUsd(stock.max_price, usdToInrRate ?? undefined))} / {formatInr(toInrFromUsd(stock.min_price, usdToInrRate ?? undefined))}
+                                                    </span>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 text-right">
@@ -542,9 +567,18 @@ export default function PortfolioAnalysis({
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 text-right">
-                                            <span className="font-bold text-[#000000] text-sm tracking-tight">
-                                                {stock.expected_price != null ? `₹${stock.expected_price.toLocaleString()}` : '-'}
-                                            </span>
+                                            <div className="flex flex-col items-end">
+                                                <span className="font-bold text-[#000000] text-sm tracking-tight">
+                                                    {stock.expected_price != null
+                                                        ? formatMoney(stock.expected_price, stock.currency, stock.country)
+                                                        : '-'}
+                                                </span>
+                                                {stock.expected_price != null && isUsd(stock.currency, stock.country) && (
+                                                    <span className="text-[10px] font-semibold text-slate-400">
+                                                        ≈ {formatInr(toInrFromUsd(stock.expected_price, usdToInrRate ?? undefined))}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-6 py-5 text-center">
                                             <span className={cn(
@@ -717,6 +751,8 @@ export default function PortfolioAnalysis({
                                     silhouette={silhouette}
                                     isBest={bestPair?.pair.id === pair.id}
                                     compact
+                                    currency={marketCurrency}
+                                    country={marketCountry}
                                 />
                             ))}
                         </div>
@@ -759,6 +795,8 @@ export default function PortfolioAnalysis({
                                         isBest={false}
                                         compact={false}
                                         hideHeader
+                                        currency={marketCurrency}
+                                        country={marketCountry}
                                     />
                                 </div>
 

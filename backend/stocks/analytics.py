@@ -437,6 +437,8 @@ def run_portfolio_analysis(sector_slug, country: str | None = None):
         stocks_data.append({
             "symbol": s.symbol,
             "company_name": s.name,
+            "currency": s.currency or "INR",
+            "country": s.country or "",
             "current_price": current_price,
             "min_price": min_price,
             "max_price": max_price,

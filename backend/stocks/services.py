@@ -459,6 +459,8 @@ class StockDataService:
             'change': change,
             'changePercent': change_percent,
             'marketCap': stock_obj.market_cap or 0,
+            'currency': stock_obj.currency or 'INR',
+            'country': stock_obj.country or '',
             'peRatio': pe_ratio,
             'peMin': pe_min,
             'peMax': pe_max,

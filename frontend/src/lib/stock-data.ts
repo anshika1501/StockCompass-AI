@@ -8,6 +8,7 @@ export interface Stock {
   change: number;
   changePercent: number;
   marketCap: number;
+  currency?: string;
   peRatio: number | null;
   peMin: number | null;
   peMax: number | null;
@@ -128,6 +129,8 @@ export interface ComparisonData {
 export interface PortfolioAnalysisStock {
   symbol: string;
   company_name: string;
+  currency?: string;
+  country?: string;
   current_price: number;
   min_price: number;
   max_price: number;

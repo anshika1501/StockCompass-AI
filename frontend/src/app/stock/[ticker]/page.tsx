@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { formatInr, formatMoney, getUsdToInrRate, isUsd, toInrFromUsd } from "@/lib/currency";
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,10 @@ export default async function StockPage({ params, searchParams }: { params: { ti
   }
 
   const isPositive = stock.change >= 0;
+  const usdToInrRate = await getUsdToInrRate();
+  const isUsdStock = isUsd(stock.currency, stock.country);
+  const formatInrIfUsd = (value: number) =>
+    isUsdStock ? formatInr(toInrFromUsd(value, usdToInrRate)) : null;
   const backHref = fromSector ? `/portfolio/${fromSector}` : '/';
   const backLabel = fromSector ? 'Back to Sector' : 'Back to Sectors';
 
@@ -68,7 +73,14 @@ export default async function StockPage({ params, searchParams }: { params: { ti
               <div className="bg-[#0f172a] p-4 rounded-xl border border-slate-800 shadow-md">
                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-1.5 leading-none">Price</p>
                 <div className="flex flex-col">
-                  <span className="text-lg font-bold text-amber-500 tracking-tight">₹{stock.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+                  <span className="text-lg font-bold text-amber-500 tracking-tight">
+                    {formatMoney(stock.currentPrice, stock.currency, stock.country, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                  </span>
+                  {isUsdStock && (
+                    <span className="text-[10px] text-slate-400 font-semibold">
+                      ≈ {formatInrIfUsd(stock.currentPrice)}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="bg-[#0f172a] p-4 rounded-xl border border-slate-800 shadow-md">
@@ -113,7 +125,7 @@ export default async function StockPage({ params, searchParams }: { params: { ti
                 <TabsTrigger value="financials" className="rounded-xl px-8 h-full data-[state=active]:bg-[#4F8DF7] data-[state=active]:text-white font-bold text-xs uppercase tracking-widest text-slate-500 transition-all">Financials</TabsTrigger>
                 <TabsTrigger value="news" className="rounded-xl px-8 h-full data-[state=active]:bg-[#4F8DF7] data-[state=active]:text-white font-bold text-xs uppercase tracking-widest text-slate-500 transition-all">News</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="overview">
                 <Card className="border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-white rounded-3xl overflow-hidden px-2 sm:px-6">
                   <CardContent className="pt-8 pb-10">
@@ -124,11 +136,25 @@ export default async function StockPage({ params, searchParams }: { params: { ti
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-8 border-t border-slate-100">
                       <div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">52W High</p>
-                        <p className="font-extrabold text-lg text-emerald-600 tracking-tight">₹{stock.fiftyTwoWeekHigh}</p>
+                        <p className="font-extrabold text-lg text-emerald-600 tracking-tight">
+                          {formatMoney(stock.fiftyTwoWeekHigh, stock.currency, stock.country)}
+                        </p>
+                        {isUsdStock && (
+                          <p className="text-[10px] text-slate-400 font-semibold">
+                            ≈ {formatInrIfUsd(stock.fiftyTwoWeekHigh)}
+                          </p>
+                        )}
                       </div>
                       <div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">52W Low</p>
-                        <p className="font-extrabold text-lg text-rose-600 tracking-tight">₹{stock.fiftyTwoWeekLow}</p>
+                        <p className="font-extrabold text-lg text-rose-600 tracking-tight">
+                          {formatMoney(stock.fiftyTwoWeekLow, stock.currency, stock.country)}
+                        </p>
+                        {isUsdStock && (
+                          <p className="text-[10px] text-slate-400 font-semibold">
+                            ≈ {formatInrIfUsd(stock.fiftyTwoWeekLow)}
+                          </p>
+                        )}
                       </div>
                       <div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Domain</p>
@@ -151,9 +177,18 @@ export default async function StockPage({ params, searchParams }: { params: { ti
             <div className="bg-white rounded-2xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-slate-200">
               <p className="text-[9px] text-slate-400 uppercase tracking-widest font-bold mb-1.5 leading-none">Market Price</p>
               <div className="flex items-end gap-3 mb-4">
-                <span className="text-3xl font-extrabold text-slate-900 tracking-tighter">₹{stock.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+                <div className="flex flex-col">
+                  <span className="text-3xl font-extrabold text-slate-900 tracking-tighter">
+                    {formatMoney(stock.currentPrice, stock.currency, stock.country, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                  </span>
+                  {isUsdStock && (
+                    <span className="text-[11px] font-semibold text-slate-400">
+                      ≈ {formatInrIfUsd(stock.currentPrice)}
+                    </span>
+                  )}
+                </div>
               </div>
-              
+
               <div className="flex items-center gap-2 mb-6">
                 <span className={cn(
                   "text-[10px] font-bold flex items-center px-2 py-0.5 rounded-md",
@@ -178,7 +213,12 @@ export default async function StockPage({ params, searchParams }: { params: { ti
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm text-center">
                 <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-1.5">Valuation</p>
-                <span className="text-xl font-bold text-slate-900 tracking-tight">₹{(stock.marketCap / 1e7).toFixed(1)} <span className="text-xs text-slate-500 font-medium">Cr</span></span>
+                <span className="text-xl font-bold text-slate-900 tracking-tight">
+                  {isUsdStock
+                    ? formatMoney(stock.marketCap, stock.currency, stock.country)
+                    : `₹${(stock.marketCap / 1e7).toFixed(1)} `}
+                  {!isUsdStock && <span className="text-xs text-slate-500 font-medium">Cr</span>}
+                </span>
               </div>
               <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm text-center">
                 <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-1.5">P/E Ratio</p>
