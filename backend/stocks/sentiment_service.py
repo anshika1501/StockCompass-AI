@@ -219,18 +219,16 @@ def _fetch_yfinance(ticker: str, company_name: str) -> List[Dict]:
 # ---------------------------------------------------------------------------
 
 def _load_stocks() -> List[Dict]:
-    """Returns {ticker, company_name, sector} for every row in the CSV."""
+    """Returns {ticker, company_name, sector} for every active stock in DB."""
+    from .models import Stock
     stocks: List[Dict] = []
-    if not os.path.exists(CSV_PATH):
-        logger.error("CSV not found: %s", CSV_PATH)
-        return stocks
-    with open(CSV_PATH, newline="", encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            sym  = row.get("Symbol", "").strip()
-            name = row.get("Company Name", "").strip()
-            sec  = row.get("Industry", "").strip()
-            if sym and sec:
-                stocks.append({"ticker": sym + ".NS", "company_name": name, "sector": sec})
+    qs = Stock.objects.filter(is_active=True).select_related('category')
+    for s in qs:
+        stocks.append({
+            "ticker": s.symbol,
+            "company_name": s.name,
+            "sector": s.category.name if s.category else "Unknown"
+        })
     return stocks
 
 
@@ -289,6 +287,41 @@ def _rebuild_snapshot(sector: str) -> None:
 # ---------------------------------------------------------------------------
 
 class SentimentService:
+
+    @staticmethod
+    def fetch_stock_sentiment_bg(ticker: str):
+        """Background thread worker to fetch specific stock news."""
+        from .models import Stock, SentimentArticle
+        try:
+            stock = Stock.objects.select_related('category').get(symbol=ticker)
+            yf_arts = _fetch_yfinance(stock.symbol, stock.name)
+            
+            sector_name = stock.category.name if stock.category else "Unknown"
+            unique_articles: List[Dict] = []
+            seen: set = set()
+            for art in yf_arts:
+                compound = _score(art["headline"] + ". " + art["snippet"])
+                key = art.get("url") or art["headline"][:80]
+                if key not in seen:
+                    seen.add(key)
+                    unique_articles.append({
+                        **art,
+                        "ticker": stock.symbol,
+                        "company_name": stock.name,
+                        "sector": sector_name,
+                        "compound_score": compound,
+                        "label": _label(compound),
+                    })
+            if unique_articles:
+                # Delete old articles specific to this stock
+                SentimentArticle.objects.filter(ticker=stock.symbol).delete()
+                _save_articles(unique_articles)
+                _rebuild_snapshot(sector_name)
+        except Exception as exc:
+            logger.error("Background fetch failed for %s: %s", ticker, exc)
+        finally:
+            # Always unlock
+            Stock.objects.filter(symbol=ticker).update(is_fetching=False)
 
     @staticmethod
     def run(

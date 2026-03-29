@@ -25,6 +25,16 @@ import OpportunityBadge from "@/components/OpportunityBadge";
 import { fetchPortfolioAnalysis, type PortfolioAnalysisData, type PortfolioAnalysisStock } from "@/lib/stock-data";
 import { getPortfolios, addHolding, type Portfolio } from "@/lib/portfolio-data";
 import { useToast } from "@/hooks/use-toast";
+import {
+    formatInr,
+    formatMoney,
+    formatUsd,
+    getInrToUsdRate,
+    getUsdToInrRate,
+    isUsd,
+    toInrFromUsd,
+    toUsdFromInr,
+} from "@/lib/currency";
 
 import {
     DropdownMenu,
@@ -178,23 +188,27 @@ const ClusterDot = (props: unknown) => {
 // ─── Axis tick formatters ─────────────────────────────────────────────────
 
 const discTickFmt = (v: number) => DISC_LABEL[Math.round(v)] ?? "";
-const priceFmt = (v: number) => `₹${(v / 1000).toFixed(0)}k`;
+const priceFmt = (v: number, currency?: string, country?: string) => {
+    if (isUsd(currency, country)) return `$${(v / 1000).toFixed(0)}k`;
+    return `₹${(v / 1000).toFixed(0)}k`;
+};
 const numFmt = (v: number) => Number(v).toFixed(0);
 
-function xFmtFor(key: FKey): (v: number) => string {
+function xFmtFor(key: FKey, currency?: string, country?: string): (v: number) => string {
     if (key === "discount_enc") return discTickFmt;
-    if (key === "current_price") return priceFmt;
+    if (key === "current_price") return (v: number) => priceFmt(v, currency, country);
     return numFmt;
 }
-function yFmtFor(key: FKey): (v: number) => string {
+function yFmtFor(key: FKey, currency?: string, country?: string): (v: number) => string {
     if (key === "discount_enc") return discTickFmt;
+    if (key === "current_price") return (v: number) => priceFmt(v, currency, country);
     return numFmt;
 }
 
 // ─── PairScatterChart sub-component ──────────────────────────────────────
 
 function PairScatterChart({
-    pair, points, clusterK, silhouette, isBest, compact, hideHeader,
+    pair, points, clusterK, silhouette, isBest, compact, hideHeader, currency, country,
 }: {
     pair: typeof FEATURE_PAIRS[0];
     points: ClusterPt[];
@@ -203,13 +217,15 @@ function PairScatterChart({
     isBest: boolean;
     compact?: boolean;
     hideHeader?: boolean;
+    currency?: string;
+    country?: string;
 }) {
     const chartH = compact ? 200 : 270;
     const byCluster = Array.from({ length: clusterK }, (_, ci) => points.filter(p => p.cluster === ci));
     const isDiscY = pair.yKey === "discount_enc";
     const isDiscX = pair.xKey === "discount_enc";
-    const xFmt = xFmtFor(pair.xKey);
-    const yFmt = yFmtFor(pair.yKey);
+    const xFmt = xFmtFor(pair.xKey, currency, country);
+    const yFmt = yFmtFor(pair.yKey, currency, country);
 
     return (
         <div className={cn(
@@ -264,11 +280,13 @@ function PairScatterChart({
                             const xDisplay = isDiscX
                                 ? (DISC_LABEL[Math.round(d.x)] ?? String(d.x))
                                 : pair.xKey === "current_price"
-                                    ? `₹${d.x.toLocaleString()}`
+                                    ? formatMoney(d.x, currency, country)
                                     : d.x.toFixed(1);
                             const yDisplay = isDiscY
                                 ? (DISC_LABEL[Math.round(d.y)] ?? String(d.y))
-                                : d.y.toFixed(1);
+                                : pair.yKey === "current_price"
+                                    ? formatMoney(d.y, currency, country)
+                                    : d.y.toFixed(1);
                             return (
                                 <div className="bg-white border border-border rounded-lg shadow-lg p-2 text-xs z-50 min-w-[140px]">
                                     <div className="font-bold text-primary mb-0.5">{d.symbol}</div>
@@ -305,7 +323,13 @@ function PairScatterChart({
 
 // ─── Main Component ──────────────────────────────────────────────────────
 
-export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }) {
+export default function PortfolioAnalysis({
+    sectorSlug,
+    market,
+}: {
+    sectorSlug: string;
+    market?: string;
+}) {
     const [data, setData] = useState<PortfolioAnalysisData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -316,6 +340,10 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
     const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
     const [isAdding, setIsAdding] = useState<string | null>(null);
     const [hasMounted, setHasMounted] = useState(false);
+    const [usdToInrRate, setUsdToInrRate] = useState<number | null>(null);
+    const [inrToUsdRate, setInrToUsdRate] = useState<number | null>(null);
+    const marketCurrency = data?.stocks?.find((s) => s.currency)?.currency;
+    const marketCountry = data?.stocks?.find((s) => s.country)?.country;
 
     // ── Sort state (MUST be before any early return) ──────────────────────────
     type SortKey = keyof PortfolioAnalysisStock | null;
@@ -324,6 +352,8 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
 
     useEffect(() => {
         setHasMounted(true);
+        getUsdToInrRate().then(setUsdToInrRate).catch(() => undefined);
+        getInrToUsdRate().then(setInrToUsdRate).catch(() => undefined);
         const loadPortfolios = async () => {
             try {
                 const list = await getPortfolios();
@@ -358,7 +388,7 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                 1,
                 stock.current_price || 0
             );
-            
+
             toast({
                 title: "Success",
                 description: `${stock.symbol} added to ${targetPortfolioName}`,
@@ -380,7 +410,7 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
             setLoading(true);
             setError("");
             try {
-                const result = await fetchPortfolioAnalysis(sectorSlug);
+                const result = await fetchPortfolioAnalysis(sectorSlug, market);
                 if (active) setData(result);
             } catch {
                 if (active) setError("Failed to load portfolio analysis.");
@@ -390,7 +420,7 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
         };
         if (sectorSlug) loadData();
         return () => { active = false; };
-    }, [sectorSlug]);
+    }, [sectorSlug, market]);
 
     // Compute K-Means clustering + silhouette score for all 6 feature pairs
     const pairResults = useMemo(() => {
@@ -424,6 +454,76 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
         () => pairResults.length ? [...pairResults].sort((a, b) => b.silhouette - a.silhouette)[0] : null,
         [pairResults]
     );
+
+    // ── Sequential Sentiment Fetching (Client-Side Queue) ─────────────────────
+    const [fetchingSentimentFor, setFetchingSentimentFor] = useState<string | null>(null);
+
+    useEffect(() => {
+        let active = true;
+        const processQueue = async () => {
+            if (!data?.stocks) return;
+            
+            // Find stocks that need fetching (fallback is true, or no score)
+            const needsFetch = data.stocks.filter(s => s.sentiment_is_fallback || s.sentiment_score === null || s.sentiment_score === undefined);
+            
+            for (const stock of needsFetch) {
+                if (!active) break;
+                
+                setFetchingSentimentFor(stock.symbol);
+                try {
+                    // Trigger the backend fetch
+                    const res = await fetch(`/api/sentiment/stock/${encodeURIComponent(stock.symbol)}/`, { cache: 'no-store' });
+                    if (res.ok) {
+                        const sentimentData = await res.json();
+                        
+                        // If it's still fetching in background, wait and poll once more after 3s
+                        let finalData = sentimentData;
+                        if (sentimentData.fetching) {
+                            await new Promise(r => setTimeout(r, 3000));
+                            if (!active) break;
+                            const res2 = await fetch(`/api/sentiment/stock/${encodeURIComponent(stock.symbol)}/`, { cache: 'no-store' });
+                            if (res2.ok) finalData = await res2.json();
+                        }
+
+                        // Update local data state with new sentiment immediately
+                        if (!finalData.fetching && finalData.sentiment_label && active) {
+                            setData(prev => {
+                                if (!prev) return prev;
+                                return {
+                                    ...prev,
+                                    stocks: prev.stocks.map(s => 
+                                        s.symbol === stock.symbol 
+                                            ? { 
+                                                ...s, 
+                                                sentiment_score: finalData.sentiment_score, 
+                                                sentiment_label: finalData.sentiment_label,
+                                                sentiment_is_fallback: false 
+                                            } 
+                                            : s
+                                    )
+                                };
+                            });
+                        }
+                    }
+                } catch (err) {
+                    // ignore fetch errors and continue queue
+                }
+                
+                // Sleep for 2.5 seconds to respect Yahoo Finance rate limits
+                if (active) {
+                    await new Promise(r => setTimeout(r, 2500));
+                }
+            }
+            if (active) setFetchingSentimentFor(null);
+        };
+
+        // Only start the queue if we have initial data loaded
+        if (data?.stocks && !loading && !error) {
+            processQueue();
+        }
+
+        return () => { active = false; };
+    }, [data?.stocks?.length, loading, error]); // intentionally leaving out full data dependency to prevent infinite loop
 
     // ── Sort logic (MUST be before early returns) ─────────────────────────────
     const requestSort = (key: SortKey) => {
@@ -572,7 +672,11 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                 {sortedStocks.map((stock, idx) => (
                                     <tr
                                         key={stock.symbol}
-                                        onClick={() => router.push(`/stock/${stock.symbol}?from=${sectorSlug}`)}
+                                        onClick={() =>
+                                            router.push(
+                                                `/stock/${stock.symbol}?from=${sectorSlug}${market ? `&market=${market}` : ''}`
+                                            )
+                                        }
                                         className={cn(
                                             "transition-all duration-200 hover:bg-blue-100 group cursor-pointer",
                                             idx % 2 === 0 ? "bg-white" : "bg-blue-50/30"
@@ -590,13 +694,19 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                             </Badge>
                                         </td>
                                         <td className="px-4 py-5 text-right text-sm font-bold text-[#000000] whitespace-nowrap">
-                                            ₹{stock.current_price?.toFixed(2) ?? 'N/A'}
+                                            <div className="flex flex-col items-end">
+                                                <span>{stock.current_price != null ? formatMoney(stock.current_price, stock.currency, stock.country) : 'N/A'}</span>
+                                            </div>
                                         </td>
                                         <td className="px-4 py-5 text-right text-[13px] font-medium text-rose-600 opacity-90 whitespace-nowrap">
-                                            ₹{stock.min_price?.toFixed(2) ?? 'N/A'}
+                                            <div className="flex flex-col items-end">
+                                                <span>{stock.min_price != null ? formatMoney(stock.min_price, stock.currency, stock.country) : 'N/A'}</span>
+                                            </div>
                                         </td>
                                         <td className="px-4 py-5 text-right text-[13px] font-medium text-emerald-600 opacity-90 whitespace-nowrap">
-                                            ₹{stock.max_price?.toFixed(2) ?? 'N/A'}
+                                            <div className="flex flex-col items-end">
+                                                <span>{stock.max_price != null ? formatMoney(stock.max_price, stock.currency, stock.country) : 'N/A'}</span>
+                                            </div>
                                         </td>
                                         <td className="px-4 py-5 text-right text-[13px] font-medium text-[#1F2937] whitespace-nowrap">
                                             {stock.pe_min != null ? stock.pe_min.toFixed(2) : '-'}
@@ -621,7 +731,7 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                             </span>
                                         </td>
                                         <td className="px-4 py-5 text-right text-sm font-bold text-[#1F2937] whitespace-nowrap">
-                                            {stock.market_cap != null ? `₹${(stock.market_cap / 1e7).toFixed(2)} Cr` : '-'}
+                                            {stock.market_cap != null ? `${formatMoney(stock.market_cap/1e7, stock.currency, stock.country)} Cr` : '-'}
                                         </td>
                                         <td className={cn(
                                             'px-4 py-5 text-center text-[13px] font-black whitespace-nowrap',
@@ -637,14 +747,19 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                             ) : '-'}
                                         </td>
                                         <td className="px-4 py-5 text-center">
-                                            {stock.sentiment_score !== undefined && stock.sentiment_score !== null ? (
+                                            {fetchingSentimentFor === stock.symbol ? (
+                                                <div className="flex flex-col items-center gap-1 justify-center h-full">
+                                                    <Loader2 size={16} className="text-[#4F8DF7] animate-spin mb-1" />
+                                                    <span className="text-[9px] font-bold text-[#4F8DF7] uppercase tracking-wider">Fetching...</span>
+                                                </div>
+                                            ) : stock.sentiment_score !== undefined && stock.sentiment_score !== null ? (
                                                 <div className="flex flex-col items-center gap-1">
                                                     <div className="flex items-center gap-1">
                                                         <span className={cn(
                                                             "text-[10px] font-bold px-2 py-0.5 rounded-md border",
                                                             stock.sentiment_label === 'BULLISH' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
-                                                            stock.sentiment_label === 'BEARISH' ? "bg-rose-50 text-rose-700 border-rose-100" :
-                                                            "bg-gray-50 text-gray-600 border-gray-100"
+                                                                stock.sentiment_label === 'BEARISH' ? "bg-rose-50 text-rose-700 border-rose-100" :
+                                                                    "bg-gray-50 text-gray-600 border-gray-100"
                                                         )}>
                                                             {stock.sentiment_label}
                                                         </span>
@@ -693,7 +808,7 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                                                     disabled={isAdding === stock.symbol}
                                                                     title="Add to Portfolio"
                                                                     className={cn(
-                                                                        "flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg transition-all shadow-sm cursor-pointer uppercase tracking-tighter pointer-events-auto relative z-[101]",
+                                                                        "flex items-center gap-2 text-[10px] font-bold px-4 py-2 rounded-xl transition-all uppercase tracking-[0.12em] shadow-sm cursor-pointer pointer-events-auto relative z-[101]",
                                                                         isAdding === stock.symbol
                                                                             ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
                                                                             : "bg-[#2563EB] text-white border-[#2563EB] hover:bg-[#1D4ED8] hover:shadow-md"
@@ -792,6 +907,8 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                     silhouette={silhouette}
                                     isBest={bestPair?.pair.id === pair.id}
                                     compact
+                                    currency={marketCurrency}
+                                    country={marketCountry}
                                 />
                             ))}
                         </div>
@@ -834,6 +951,8 @@ export default function PortfolioAnalysis({ sectorSlug }: { sectorSlug: string }
                                         isBest={false}
                                         compact={false}
                                         hideHeader
+                                        currency={marketCurrency}
+                                        country={marketCountry}
                                     />
                                 </div>
 

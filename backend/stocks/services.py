@@ -64,18 +64,27 @@ CATEGORY_META = {
         'image': 'https://picsum.photos/seed/chem/800/600',
         'description': 'Agrochemicals, paints and diversified conglomerates.',
     },
+    'USA Market': {
+        'icon': 'globe',
+        'image': 'https://picsum.photos/seed/usa/800/600',
+        'description': 'Large-cap US equities from the USA 200 list.',
+    },
 }
 
 NIFTY500_CSV_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "data", "ind_nifty500list.csv")
 )
+USA200_CSV_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "data", "USA _200.csv")
+)
 
 
-def _normalize_symbol(symbol: str) -> str:
+def _normalize_symbol(symbol: str, country: str = "") -> str:
     value = (symbol or "").strip().upper()
     if not value:
         return ""
-    if not value.endswith(".NS"):
+    country_value = (country or "").strip().lower()
+    if country_value in {"india", "in"} and not value.endswith(".NS"):
         value = f"{value}.NS"
     return value
 
@@ -170,7 +179,7 @@ class StockDataService:
     }
 
     @classmethod
-    def _load_categories_from_csv(cls):
+    def _load_india_from_csv(cls):
         if not os.path.exists(NIFTY500_CSV_PATH):
             return None
 
@@ -187,7 +196,8 @@ class StockDataService:
 
         categories = {}
         for _, row in df.iterrows():
-            symbol = _normalize_symbol(str(row.get("Symbol", "")))
+            country = str(row.get("Country", "India")).strip() or "India"
+            symbol = _normalize_symbol(str(row.get("Symbol", "")), country)
             if not symbol:
                 continue
             company_name = str(row.get("Company Name", "")).strip()
@@ -197,8 +207,53 @@ class StockDataService:
                 "symbol": symbol,
                 "name": company_name,
                 "industry": industry,
+                "country": country,
             })
 
+        return categories or None
+
+    @classmethod
+    def _load_usa_from_csv(cls):
+        if not os.path.exists(USA200_CSV_PATH):
+            return None
+
+        try:
+            df = pd.read_csv(USA200_CSV_PATH)
+        except Exception as exc:
+            logger.error("Failed to read USA200 CSV: %s", exc)
+            return None
+
+        required = {"Symbol", "Company", "Industry"}
+        if not required.issubset(set(df.columns)):
+            logger.error("USA200 CSV missing required columns: %s", required)
+            return None
+
+        categories = {}
+        for _, row in df.iterrows():
+            country = str(row.get("Country", "USA")).strip() or "USA"
+            symbol = _normalize_symbol(str(row.get("Symbol", "")), country)
+            if not symbol:
+                continue
+            company_name = str(row.get("Company", "")).strip()
+            industry = str(row.get("Industry", "")).strip()
+            category_name = _map_industry_to_category(industry)
+            categories.setdefault(category_name, []).append({
+                "symbol": symbol,
+                "name": company_name,
+                "industry": industry,
+                "country": country,
+            })
+
+        return categories or None
+
+    @classmethod
+    def _load_categories_from_csvs(cls):
+        categories = {}
+        for source in (cls._load_india_from_csv(), cls._load_usa_from_csv()):
+            if not source:
+                continue
+            for category_name, items in source.items():
+                categories.setdefault(category_name, []).extend(items)
         return categories or None
 
 
@@ -206,7 +261,7 @@ class StockDataService:
     def initialize_categories_and_stocks(cls):
         """Initialize stock categories and stocks in the database."""
         try:
-            csv_categories = cls._load_categories_from_csv()
+            csv_categories = cls._load_categories_from_csvs()
             if csv_categories:
                 cls.STOCK_CATEGORIES = {
                     cat: [item["symbol"] for item in items]
@@ -245,6 +300,7 @@ class StockDataService:
                         stock_data = cls.fetch_stock_info(symbol)
                         fallback_name = item.get("name") or symbol
                         fallback_industry = item.get("industry") or ""
+                        fallback_country = item.get("country") or ""
                         if stock_data:
                             stock, stock_created = Stock.objects.get_or_create(
                                 symbol=symbol,
@@ -264,13 +320,15 @@ class StockDataService:
                                     'description': stock_data.get('description', ''),
                                     'website': stock_data.get('website', ''),
                                     'city': stock_data.get('city', ''),
-                                    'country': stock_data.get('country', ''),
+                                    'country': fallback_country or stock_data.get('country', ''),
                                     'employees': stock_data.get('employees'),
                                 }
                             )
                             if stock_created:
                                 logger.info(f"Created stock: {symbol}")
                             else:
+                                if stock.category_id != category.id:
+                                    stock.category = category
                                 for key in ('name', 'exchange', 'sector', 'industry',
                                             'market_cap', 'current_price', 'previous_close',
                                             'fifty_two_week_high', 'fifty_two_week_low',
@@ -283,6 +341,8 @@ class StockDataService:
                                     stock.name = fallback_name
                                 if not stock.industry:
                                     stock.industry = fallback_industry
+                                if fallback_country:
+                                    stock.country = fallback_country
                                 stock.save()
                     except Exception as e:
                         logger.error(f"Error processing stock {symbol}: {str(e)}")
@@ -399,6 +459,8 @@ class StockDataService:
             'change': change,
             'changePercent': change_percent,
             'marketCap': stock_obj.market_cap or 0,
+            'currency': stock_obj.currency or 'INR',
+            'country': stock_obj.country or '',
             'peRatio': pe_ratio,
             'peMin': pe_min,
             'peMax': pe_max,

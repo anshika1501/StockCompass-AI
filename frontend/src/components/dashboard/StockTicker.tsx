@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TrendingUp, TrendingDown } from "lucide-react";
 
 interface TickerItem {
@@ -24,7 +24,20 @@ const TICKERS: TickerItem[] = [
 
 export default function StockTicker() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"INTERNATIONAL" | "INDIAN">("INDIAN");
+  const searchParams = useSearchParams();
+  const market = searchParams.get("market")?.toLowerCase();
+  
+  const [activeTab, setActiveTab] = useState<"INTERNATIONAL" | "INDIAN">(
+    market === "usa" ? "INTERNATIONAL" : "INDIAN"
+  );
+
+  useEffect(() => {
+    if (market === "usa") {
+      setActiveTab("INTERNATIONAL");
+    } else {
+      setActiveTab("INDIAN");
+    }
+  }, [market]);
 
   return (
     <div className="space-y-4 mb-6">
@@ -52,7 +65,10 @@ export default function StockTicker() {
       {/* Tabs Row */}
       <div className="flex rounded-2xl border border-slate-200 bg-slate-50 p-1.5 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
         <button
-          onClick={() => setActiveTab("INTERNATIONAL")}
+          onClick={() => {
+            setActiveTab("INTERNATIONAL");
+            router.push("/portfolios?market=usa");
+          }}
           className={`flex-1 rounded-xl py-3 text-[10px] font-bold tracking-widest uppercase transition-all ${
             activeTab === "INTERNATIONAL"
               ? "bg-[#4F8DF7] text-white shadow-md shadow-blue-500/20"
@@ -64,6 +80,7 @@ export default function StockTicker() {
         <button
           onClick={() => {
             setActiveTab("INDIAN");
+            router.push("/portfolios?market=india");
           }}
           className={`flex-1 rounded-xl py-3 text-[10px] font-bold tracking-widest uppercase transition-all ${
             activeTab === "INDIAN"

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TrendingUp, TrendingDown, Loader2, ChevronRight } from "lucide-react";
 import { searchStocks } from "@/lib/stock-data";
 
@@ -18,7 +18,20 @@ const TICKERS = [
 
 export default function DashboardHeaderUI() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"INTERNATIONAL" | "INDIAN">("INDIAN");
+  const searchParams = useSearchParams();
+  const market = searchParams.get("market")?.toLowerCase();
+
+  const [activeTab, setActiveTab] = useState<"INTERNATIONAL" | "INDIAN">(
+    market === "usa" ? "INTERNATIONAL" : "INDIAN"
+  );
+
+  useEffect(() => {
+    if (market === "usa") {
+      setActiveTab("INTERNATIONAL");
+    } else {
+      setActiveTab("INDIAN");
+    }
+  }, [market]);
   
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -196,7 +209,10 @@ export default function DashboardHeaderUI() {
       {/* Tabs Row */}
       <div className="flex rounded-2xl border border-slate-200 bg-slate-50 p-1.5 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
         <button
-          onClick={() => setActiveTab("INTERNATIONAL")}
+          onClick={() => {
+            setActiveTab("INTERNATIONAL");
+            router.push("/portfolios?market=usa");
+          }}
           className={`flex-1 rounded-xl py-3 text-xs font-bold tracking-widest uppercase transition-all ${
             activeTab === "INTERNATIONAL"
               ? "bg-[#4F8DF7] text-white shadow-md shadow-blue-500/20"
@@ -208,7 +224,7 @@ export default function DashboardHeaderUI() {
         <button
           onClick={() => {
             setActiveTab("INDIAN");
-            router.push("/portfolios");
+            router.push("/portfolios?market=india");
           }}
           className={`flex-1 rounded-xl py-3 text-xs font-bold tracking-widest uppercase transition-all ${
             activeTab === "INDIAN"

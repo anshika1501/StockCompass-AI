@@ -1,3 +1,5 @@
+from typing import Any, Dict, Optional
+
 from rest_framework import status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
@@ -27,8 +29,284 @@ from .analytics import (
 import logging
 import pandas as pd
 import numpy as np
+import re
 
 logger = logging.getLogger(__name__)
+
+
+def _detect_portfolio_action(question: str) -> Optional[Dict[str, Any]]:
+    """
+    Lightweight intent detector for portfolio CRUD expressed in plain language.
+    Returns None when no action is recognized.
+    """
+    if not question:
+        return None
+
+    q = question.strip()
+    q_lower = q.lower()
+
+    # List portfolios
+    if re.search(r"\b(list|show|see)\s+(my\s+)?portfolios\b", q_lower):
+        return {"intent": "list_portfolios"}
+
+    # Create portfolio
+    m = re.search(
+        r"\b(create|make|open)\s+(?:a\s+)?portfolio(?:\s+(?:named|called)\s+(?P<name>[A-Za-z0-9 _\-]{2,60}))?",
+        q,
+        flags=re.IGNORECASE,
+    )
+    if m:
+        name = (m.group("name") or "").strip(" \"'") if m.group("name") else None
+        return {"intent": "create_portfolio", "name": name}
+
+    # Rename portfolio (explicit old + new)
+    m = re.search(
+        r"\b(rename|edit|change)\s+portfolio\s+(?P<old>[A-Za-z0-9 _\-]{2,60})\s+(?:name\s+)?(?:to|as)\s+(?P<new>[A-Za-z0-9 _\-]{2,60})",
+        q,
+        flags=re.IGNORECASE,
+    )
+    if m:
+        return {
+            "intent": "rename_portfolio",
+            "old": m.group("old").strip(" \"'"),
+            "new": m.group("new").strip(" \"'"),
+        }
+
+    # Rename portfolio (no old specified; e.g., "edit portfolio name to Growth Plus")
+    m = re.search(
+        r"\b(rename|edit|change)\s+portfolio\s+name\s+(?:to|as)\s+(?P<new>[A-Za-z0-9 _\-]{2,60})",
+        q,
+        flags=re.IGNORECASE,
+    )
+    if m:
+        return {
+            "intent": "rename_portfolio",
+            "old": None,
+            "new": m.group("new").strip(" \"'"),
+        }
+
+    # Delete portfolio
+    m = re.search(
+        r"\b(delete|remove|drop)\s+portfolio\s+(?P<name>[A-Za-z0-9 _\-]{1,60})",
+        q,
+        flags=re.IGNORECASE,
+    )
+    if m:
+        return {"intent": "delete_portfolio", "name": m.group("name").strip(" \"'")}
+
+    m = re.search(
+        r"\b(delete|remove|drop)\s+(?:the\s+|my\s+)?(?P<name>[A-Za-z0-9 _\-]{1,60})\s+(?:portfolio|book)\b",
+        q,
+        flags=re.IGNORECASE,
+    )
+    if m:
+        return {"intent": "delete_portfolio", "name": m.group("name").strip(" \"'")}
+
+    # Add holding
+    m = re.search(
+        r"\badd\s+(?P<qty>\d+(?:\.\d+)?)?\s*(shares|units)?\s*(of\s+)?(?P<ticker>[A-Za-z0-9.\-]{1,10})",
+        q,
+        flags=re.IGNORECASE,
+    )
+    if m:
+        price_match = re.search(r"at\s+(?P<price>\d+(?:\.\d+)?)", q, flags=re.IGNORECASE)
+        portfolio_match = re.search(
+            r"(?:to|into|in)\s+(?:portfolio|book)\s+(?P<portfolio>[A-Za-z0-9 _\-]{1,60})",
+            q,
+            flags=re.IGNORECASE,
+        )
+        return {
+            "intent": "add_holding",
+            "ticker": m.group("ticker").upper(),
+            "qty": m.group("qty"),
+            "price": price_match.group("price") if price_match else None,
+            "portfolio": portfolio_match.group("portfolio").strip(" \"'") if portfolio_match else None,
+        }
+
+    # Delete holding
+    m = re.search(
+        r"\b(remove|delete)\s+(?P<ticker>[A-Za-z0-9.\-]{1,10}).*(holding|position)?",
+        q,
+        flags=re.IGNORECASE,
+    )
+    if m:
+        portfolio_match = re.search(
+            r"(?:from|in)\s+(?:portfolio|book)\s+(?P<portfolio>[A-Za-z0-9 _\-]{1,60})",
+            q,
+            flags=re.IGNORECASE,
+        )
+        return {
+            "intent": "delete_holding",
+            "ticker": m.group("ticker").upper(),
+            "portfolio": portfolio_match.group("portfolio").strip(" \"'") if portfolio_match else None,
+        }
+
+    return None
+
+
+def _execute_portfolio_action(action: Dict[str, Any], request):
+    """Perform a portfolio CRUD action. Returns a DRF Response."""
+    user = _get_user_from_request(request)
+    if user is None:
+        return Response(
+            {'error': 'Authentication required. Please sign in again.'},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    intent = action.get("intent")
+
+    if intent == "list_portfolios":
+        portfolios = Portfolio.objects.filter(user=user).prefetch_related("holdings")
+        if not portfolios.exists():
+            return Response(
+                {"answer": "You don’t have any portfolios yet. Say “create portfolio called Growth” to add one.", "sources": []}
+            )
+        lines = []
+        for p in portfolios:
+            lines.append(
+                f"- {p.name} — {len(p.holdings.all())} holdings"
+                + (f" — {p.description}" if p.description else "")
+            )
+        return Response({"answer": "Here are your portfolios:\n" + "\n".join(lines), "sources": []})
+
+    if intent == "create_portfolio":
+        name = (action.get("name") or "").strip()
+        if not name:
+            return Response(
+                {"error": "Please provide a portfolio name, e.g., “create portfolio called Growth”."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if Portfolio.objects.filter(user=user, name__iexact=name).exists():
+            return Response(
+                {"answer": f'A portfolio named "{name}" already exists. Choose another name or say “rename portfolio {name} to …”.', "sources": []},
+                status=status.HTTP_200_OK,
+            )
+        portfolio = Portfolio.objects.create(user=user, name=name, description="")
+        return Response(
+            {"answer": f'Created portfolio "{portfolio.name}".', "sources": [], "action": {"created_portfolio_id": portfolio.id}},
+            status=status.HTTP_201_CREATED,
+        )
+
+    if intent == "rename_portfolio":
+        old = (action.get("old") or "").strip(" \"'.:,")
+        new = (action.get("new") or "").strip(" \"'.:,")
+
+        if not new:
+            return Response({"error": "Please provide the new portfolio name."}, status=status.HTTP_400_BAD_REQUEST)
+
+        portfolio: Optional[Portfolio] = None
+
+        if old:
+            portfolio = Portfolio.objects.filter(user=user, name__iexact=old).first()
+            if not portfolio:
+                return Response({"error": f'No portfolio found named "{old}".'}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            user_portfolios = Portfolio.objects.filter(user=user)
+            if user_portfolios.count() == 1:
+                portfolio = user_portfolios.first()
+            elif user_portfolios.count() == 0:
+                return Response({"error": "You don't have any portfolios yet. Create one first."}, status=status.HTTP_404_NOT_FOUND)
+            else:
+                names = ", ".join(p.name for p in user_portfolios[:6])
+                return Response(
+                    {"error": f"Multiple portfolios found. Please specify which one to rename. Available: {names}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        portfolio.name = new
+        portfolio.save()
+        return Response({"answer": f'Renamed portfolio to "{new}".', "sources": []})
+
+    if intent == "delete_portfolio":
+        name = (action.get("name") or "").strip(" \"'.:,")
+        if not name:
+            return Response({"error": "Please specify which portfolio to delete."}, status=status.HTTP_400_BAD_REQUEST)
+        portfolio = Portfolio.objects.filter(user=user, name__iexact=name).first()
+        if not portfolio:
+            return Response({"error": f'No portfolio found named "{name}".'}, status=status.HTTP_404_NOT_FOUND)
+        portfolio.delete()
+        return Response({"answer": f'Deleted portfolio "{name}" and its holdings.', "sources": []})
+
+    if intent == "add_holding":
+        ticker = action.get("ticker")
+        qty_raw = action.get("qty")
+        price_raw = action.get("price")
+        portfolio_name = action.get("portfolio")
+
+        portfolios = Portfolio.objects.filter(user=user)
+        if portfolio_name:
+            portfolio = portfolios.filter(name__iexact=portfolio_name).first()
+            if not portfolio:
+                return Response({"error": f'No portfolio found named "{portfolio_name}".'}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            if portfolios.count() == 1:
+                portfolio = portfolios.first()
+            else:
+                return Response(
+                    {"error": "Please specify which portfolio to use (e.g., “add 5 AAPL at 150 to portfolio Growth”)."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        try:
+            qty = int(float(qty_raw)) if qty_raw is not None else None
+        except (TypeError, ValueError):
+            qty = None
+
+        try:
+            price = float(price_raw) if price_raw is not None else None
+        except (TypeError, ValueError):
+            price = None
+
+        if not ticker or qty is None or price is None:
+            return Response(
+                {"error": "To add a holding, include ticker, quantity, and buy price. Example: add 10 AAPL at 150 to portfolio Growth."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if qty <= 0 or price <= 0:
+            return Response({"error": "Quantity and buy price must be greater than 0."}, status=status.HTTP_400_BAD_REQUEST)
+
+        holding = Holding.objects.create(
+            portfolio=portfolio,
+            ticker=ticker.upper(),
+            company_name=ticker.upper(),
+            quantity=qty,
+            buy_price=price,
+        )
+        return Response(
+            {
+                "answer": f'Added {qty} shares of {holding.ticker} at {price} to "{portfolio.name}".',
+                "sources": [],
+                "action": {"holding_id": holding.id, "portfolio_id": portfolio.id},
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    if intent == "delete_holding":
+        ticker = (action.get("ticker") or "").upper()
+        portfolio_name = action.get("portfolio")
+        portfolios = Portfolio.objects.filter(user=user)
+
+        if portfolio_name:
+            portfolio = portfolios.filter(name__iexact=portfolio_name).first()
+            if not portfolio:
+                return Response({"error": f'No portfolio found named "{portfolio_name}".'}, status=status.HTTP_404_NOT_FOUND)
+            holdings_qs = portfolio.holdings.filter(ticker__iexact=ticker)
+        else:
+            if portfolios.count() == 1:
+                portfolio = portfolios.first()
+                holdings_qs = portfolio.holdings.filter(ticker__iexact=ticker)
+            else:
+                holdings_qs = Holding.objects.filter(portfolio__user=user, ticker__iexact=ticker)
+
+        if not holdings_qs.exists():
+            return Response({"error": f'No holding found for {ticker}.'}, status=status.HTTP_404_NOT_FOUND)
+
+        count = holdings_qs.count()
+        holdings_qs.delete()
+        return Response({"answer": f"Removed {count} holding(s) for {ticker}.", "sources": []})
+
+    return Response({"error": "Unsupported action."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])
@@ -37,16 +315,23 @@ def sector_list(request):
     GET /api/sectors/
     Returns all categories in {id, name, description, icon, image} shape.
     """
-    categories = StockCategory.objects.all()
+    market = request.query_params.get('market', '').strip().lower()
+    categories = StockCategory.objects.filter(stocks__is_active=True)
+    if market in {'india', 'usa'}:
+        categories = categories.filter(stocks__country__iexact=market)
+    categories = categories.distinct()
     data = []
     for cat in categories:
+        stock_qs = cat.stocks.filter(is_active=True)
+        if market in {'india', 'usa'}:
+            stock_qs = stock_qs.filter(country__iexact=market)
         data.append({
             'id': cat.slug or cat.name.lower().replace(' ', '-'),
             'name': cat.name,
             'description': cat.description or '',
             'icon': cat.icon or 'trending-up',
             'image': cat.image or '',
-            'stockCount': cat.stocks.filter(is_active=True).count(),
+            'stockCount': stock_qs.count(),
         })
     return Response(data)
 
@@ -332,6 +617,7 @@ def stocks_by_sector(request, sector_slug):
     GET /api/sectors/<slug>/stocks/
     Returns stocks for a sector in frontend Stock interface shape.
     """
+    market = request.query_params.get('market', '').strip().lower()
     try:
         category = StockCategory.objects.get(slug=sector_slug)
     except StockCategory.DoesNotExist:
@@ -343,6 +629,8 @@ def stocks_by_sector(request, sector_slug):
             return Response({'error': 'Sector not found'}, status=status.HTTP_404_NOT_FOUND)
 
     stocks = Stock.objects.filter(category=category, is_active=True)
+    if market in {'india', 'usa'}:
+        stocks = stocks.filter(country__iexact=market)
     
     # Inject sentiment in bulk
     from .models import SentimentArticle
@@ -581,7 +869,9 @@ def portfolio_analysis(request, sector_slug):
     GET /api/sectors/<slug>/analysis/
     Run portfolio analysis with PE ratio, discount level, opportunity score, and correlation.
     """
-    data = run_portfolio_analysis(sector_slug)
+    market = request.query_params.get('market', '').strip().lower()
+    country = market if market in {'india', 'usa'} else None
+    data = run_portfolio_analysis(sector_slug, country=country)
     return Response(data)
 
 
@@ -1996,6 +2286,7 @@ from .serializers import StockPredictionSerializer
 import yfinance as yf
 
 @api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
 def stock_predictions(request):
     """
     GET: List all predictions
@@ -2506,8 +2797,7 @@ class RenamePortfolioView(APIView):
         return Response(serializer.data)
 
 @api_view(['POST'])
-@authentication_classes([TokenAuthentication, SessionAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def evaluate_predictions(request):
     """
     POST: Evaluate predictions that have passed their target time.
@@ -2566,6 +2856,11 @@ def chat_with_stocks(request):
     embed_model = request.data.get('embed_model') if isinstance(request.data, dict) else None
     base_url = request.data.get('base_url') if isinstance(request.data, dict) else None
 
+    # Try to handle portfolio CRUD via deterministic intent detection.
+    action = _detect_portfolio_action(str(question))
+    if action:
+        return _execute_portfolio_action(action, request)
+
     try:
         result = ChatAdvisorService().answer(
             str(question),
@@ -2607,6 +2902,7 @@ def list_ollama_models(request):
 # ---------------------------------------------------------------------------
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def sentiment_sector_list(request):
     """
     GET /api/sentiment/sectors/
@@ -2653,6 +2949,7 @@ def sentiment_sector_list(request):
 
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def sentiment_sector_detail(request, sector_slug):
     """
     GET /api/sentiment/sector/<sector_slug>/
@@ -2733,6 +3030,7 @@ def sentiment_sector_detail(request, sector_slug):
 
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def sentiment_stock_detail(request, ticker):
     """
     GET /api/sentiment/stock/<ticker>/
@@ -2774,8 +3072,7 @@ def sentiment_stock_detail(request, ticker):
 
 
 @api_view(['POST'])
-@authentication_classes([TokenAuthentication, SessionAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def sentiment_refresh(request):
     """
     POST /api/sentiment/refresh/
@@ -3430,5 +3727,74 @@ def reset_password(request):
     cache.delete(f"pwd_reset_{token}")
     
     return Response({'message': 'Password reset successful.'})
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def sentiment_stock_detail(request, ticker):
+    """
+    GET /api/sentiment/stock/<ticker>/
+    On-demand fetch with 24h cache and non-blocking lock.
+    """
+    from .models import Stock, SentimentArticle
+    from .sentiment_service import SentimentService
+    from django.utils import timezone
+    import threading
+    from datetime import timedelta
+    
+    ticker = ticker.upper()
+    try:
+        stock = Stock.objects.get(symbol=ticker)
+    except Stock.DoesNotExist:
+        return Response({'error': f'Stock {ticker} not found'}, status=404)
+        
+    time_threshold = timezone.now() - timedelta(hours=24)
+    recent_articles = SentimentArticle.objects.filter(
+        ticker=ticker,
+        fetched_at__gte=time_threshold
+    ).order_by('-published_at')
+    
+    if recent_articles.exists():
+        articles_data = []
+        total_score = 0
+        for art in recent_articles[:10]:
+            articles_data.append({
+                "headline": art.headline,
+                "snippet": art.snippet,
+                "url": art.url,
+                "source": art.source,
+                "published_at": art.published_at,
+                "sentiment_score": art.compound_score,
+                "sentiment_label": art.label
+            })
+            total_score += art.compound_score
+            
+        avg_score = round(total_score / len(articles_data), 4) if articles_data else 0.0
+        return Response({
+            "ticker": ticker,
+            "fetching": False,
+            "sentiment_score": avg_score,
+            "sentiment_label": 'BULLISH' if avg_score >= 0.05 else ('BEARISH' if avg_score <= -0.05 else 'NEUTRAL'),
+            "news": articles_data
+        })
+        
+    if stock.is_fetching:
+        return Response({
+            "ticker": ticker,
+            "fetching": True,
+            "message": "Data is being updated..."
+        })
+        
+    stock.is_fetching = True
+    stock.save()
+    
+    thread = threading.Thread(target=SentimentService.fetch_stock_sentiment_bg, args=(ticker,))
+    thread.daemon = True
+    thread.start()
+    
+    return Response({
+        "ticker": ticker,
+        "fetching": True,
+        "message": "Data is being updated..."
+    })
 
 

@@ -83,7 +83,7 @@ const SOURCE_LABEL: Record<string, string> = {
 };
 
 function LabelBadge({ label, size = "sm" }: { label: SentimentLabel; size?: "sm" | "lg" }) {
-  const cfg = LABEL_CONFIG[label];
+  const cfg = LABEL_CONFIG[label] || LABEL_CONFIG["NEUTRAL"];
   const Icon = cfg.icon;
   return (
     <span className={cn(
@@ -117,7 +117,7 @@ function ScoreBar({ score }: { score: number }) {
 // ---------------------------------------------------------------------------
 
 function ArticleCard({ a }: { a: Article }) {
-  const cfg = LABEL_CONFIG[a.label];
+  const cfg = LABEL_CONFIG[a.label] || LABEL_CONFIG["NEUTRAL"];
   return (
     <div className={cn(
       "rounded-2xl border p-4 transition-all hover:shadow-sm",
@@ -176,7 +176,7 @@ function SectorCard({
   snapshot: SectorSnapshot;
   onClick: () => void;
 }) {
-  const cfg = LABEL_CONFIG[snapshot.label];
+  const cfg = LABEL_CONFIG[snapshot.label] || LABEL_CONFIG["NEUTRAL"];
   const Icon = cfg.icon;
   return (
     <button
@@ -250,7 +250,7 @@ function SectorDetailPanel({
       {/* Summary row */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: "Avg Score", value: (snap.avg_score >= 0 ? "+" : "") + snap.avg_score.toFixed(3), color: LABEL_CONFIG[snap.label].color },
+          { label: "Avg Score", value: (snap.avg_score >= 0 ? "+" : "") + snap.avg_score.toFixed(3), color: (LABEL_CONFIG[snap.label] || LABEL_CONFIG["NEUTRAL"]).color },
           { label: "Articles", value: snap.article_count, color: "text-slate-900" },
           { label: "Bullish", value: snap.bullish_count, color: "text-emerald-600" },
           { label: "Bearish", value: snap.bearish_count, color: "text-rose-600" },
@@ -310,7 +310,7 @@ function SectorDetailPanel({
                   <span className="text-xs text-slate-400">{s.article_count} art.</span>
                   <span className={cn(
                     "text-sm font-extrabold tabular-nums",
-                    LABEL_CONFIG[s.label].color,
+                    (LABEL_CONFIG[s.label] || LABEL_CONFIG["NEUTRAL"]).color,
                   )}>
                     {s.avg_score >= 0 ? "+" : ""}{s.avg_score.toFixed(3)}
                   </span>
@@ -398,7 +398,7 @@ function StockSearchPanel() {
               </div>
               <div className="flex flex-col items-end gap-2">
                 <LabelBadge label={result.label} size="lg" />
-                <span className={cn("text-2xl font-extrabold tabular-nums", LABEL_CONFIG[result.label].color)}>
+                <span className={cn("text-2xl font-extrabold tabular-nums", (LABEL_CONFIG[result.label] || LABEL_CONFIG["NEUTRAL"]).color)}>
                   {result.avg_score >= 0 ? "+" : ""}{result.avg_score.toFixed(3)}
                 </span>
               </div>

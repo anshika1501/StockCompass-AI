@@ -8,6 +8,7 @@ export interface Stock {
   change: number;
   changePercent: number;
   marketCap: number;
+  currency?: string;
   peRatio: number | null;
   peMin: number | null;
   peMax: number | null;
@@ -128,6 +129,8 @@ export interface ComparisonData {
 export interface PortfolioAnalysisStock {
   symbol: string;
   company_name: string;
+  currency?: string;
+  country?: string;
   current_price: number;
   min_price: number;
   max_price: number;
@@ -207,9 +210,12 @@ async function apiFetch<T>(path: string): Promise<T> {
 }
 
 /** Fetch all sectors (categories) */
-export async function getSectors(): Promise<Sector[]> {
+export async function getSectors(market?: string): Promise<Sector[]> {
   try {
-    return await apiFetch<Sector[]>('/sectors/');
+    const params = new URLSearchParams();
+    if (market) params.set('market', market);
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    return await apiFetch<Sector[]>(`/sectors/${suffix}`);
   } catch {
     return [];
   }
@@ -229,8 +235,14 @@ export async function getNifty50Stocks(): Promise<Stock[]> {
 }
 
 /** Fetch stocks for a sector + sector meta */
-export async function getStocksBySector(sectorSlug: string): Promise<{ sector: Sector; stocks: Stock[] }> {
-  return apiFetch<{ sector: Sector; stocks: Stock[] }>(`/sectors/${sectorSlug}/stocks/`);
+export async function getStocksBySector(
+  sectorSlug: string,
+  market?: string
+): Promise<{ sector: Sector; stocks: Stock[] }> {
+  const params = new URLSearchParams();
+  if (market) params.set('market', market);
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  return apiFetch<{ sector: Sector; stocks: Stock[] }>(`/sectors/${sectorSlug}/stocks/${suffix}`);
 }
 
 /** Fetch full stock detail (with history) */
@@ -303,8 +315,14 @@ export async function fetchLiveStockComparison(
 }
 
 /** Fetch portfolio analysis for a sector */
-export async function fetchPortfolioAnalysis(sectorSlug: string): Promise<PortfolioAnalysisData> {
-  return apiFetch<PortfolioAnalysisData>(`/sectors/${sectorSlug}/analysis/`);
+export async function fetchPortfolioAnalysis(
+  sectorSlug: string,
+  market?: string
+): Promise<PortfolioAnalysisData> {
+  const params = new URLSearchParams();
+  if (market) params.set('market', market);
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  return apiFetch<PortfolioAnalysisData>(`/sectors/${sectorSlug}/analysis/${suffix}`);
 }
 
 /** Linear regression analysis for two stocks */
@@ -477,10 +495,16 @@ export async function fetchAssetForecast(ticker: string, model: string, horizon:
   return apiFetch<AssetForecast>(`/forecast/?ticker=${encodeURIComponent(ticker)}&model=${encodeURIComponent(model)}&horizon=${encodeURIComponent(horizon)}`);
 }
 
+function getChatAuthHeaders(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const token = localStorage.getItem("stock_compass_token");
+  return token ? { Authorization: `Token ${token}` } : {};
+}
+
 export async function chatWithStocks(query: string, model?: string, embedModel?: string, baseUrl?: string): Promise<ChatResponse> {
   const res = await fetch(`${API_BASE}/chatbot/`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getChatAuthHeaders() },
     body: JSON.stringify({ query, model, embed_model: embedModel, base_url: baseUrl }),
     cache: 'no-store',
   });
@@ -544,5 +568,40 @@ export function formatMoney(value: number | null | undefined, currency: string =
     }).format(value);
   } catch {
     return `₹${value.toFixed(2)}`;
+  }
+}
+
+// ─── On-Demand Sentiment ──────────────────────────────────────────
+
+export interface SentimentArticleData {
+  headline: string;
+  snippet: string;
+  url: string;
+  source: string;
+  published_at: string;
+  sentiment_score: number;
+  sentiment_label: 'BULLISH' | 'NEUTRAL' | 'BEARISH';
+}
+
+export interface StockSentimentResponse {
+  ticker: string;
+  fetching: boolean;
+  message?: string;
+  sentiment_score?: number;
+  sentiment_label?: 'BULLISH' | 'NEUTRAL' | 'BEARISH';
+  news?: SentimentArticleData[];
+  error?: string;
+}
+
+export async function fetchStockSentiment(ticker: string): Promise<StockSentimentResponse> {
+  try {
+    const res = await fetch(`${API_BASE}/sentiment/stock/${encodeURIComponent(ticker)}/`, { cache: 'no-store' });
+    if (!res.ok) {
+      const detail = await res.json().catch(() => ({}));
+      return { ticker, fetching: false, error: detail.error || `API error ${res.status}` };
+    }
+    return await res.json();
+  } catch (err) {
+    return { ticker, fetching: false, error: err instanceof Error ? err.message : 'Unknown error fetching sentiment' };
   }
 }

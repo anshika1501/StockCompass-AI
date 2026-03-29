@@ -348,7 +348,7 @@ def fetch_live_stock_comparison(symbol_a, symbol_b, period="5y", interval="1d"):
 
 # ─── Portfolio Analysis ───────────────────────────────────────────
 
-def run_portfolio_analysis(sector_slug):
+def run_portfolio_analysis(sector_slug, country: str | None = None):
     """
     Run analysis on all stocks in a sector/portfolio.
     Returns PE ratio, discount level, opportunity score, and correlation data.
@@ -367,13 +367,16 @@ def run_portfolio_analysis(sector_slug):
             return {"stocks": [], "correlation": {}}
 
     stocks = Stock.objects.filter(category=category, is_active=True)
+    if country:
+        stocks = stocks.filter(country__iexact=country)
     if not stocks.exists():
         return {"stocks": [], "correlation": {}}
 
     # Fetch sentiment scores for all stocks in this sector (today or recent)
+    symbols = list(stocks.values_list("symbol", flat=True))
     sentiment_agg = (
         SentimentArticle.objects
-        .filter(sector=category.name)
+        .filter(sector=category.name, ticker__in=symbols)
         .values('ticker')
         .annotate(avg_score=Avg('compound_score'))
     )
@@ -442,6 +445,8 @@ def run_portfolio_analysis(sector_slug):
         stocks_data.append({
             "symbol": s.symbol,
             "company_name": s.name,
+            "currency": s.currency or "INR",
+            "country": s.country or "",
             "current_price": current_price,
             "min_price": min_price,
             "max_price": max_price,

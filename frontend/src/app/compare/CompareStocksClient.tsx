@@ -39,6 +39,14 @@ import {
   type LiveSearchResult,
 } from "@/lib/stock-data";
 import { useCompareStocks } from "@/hooks/use-compare-stocks";
+import {
+  formatInr,
+  formatUsd,
+  getInrToUsdRate,
+  getUsdToInrRate,
+  toInrFromUsd,
+  toUsdFromInr,
+} from "@/lib/currency";
 
 const PERIOD_OPTIONS = [
   { label: "1 Year", value: "1y" },
@@ -153,6 +161,8 @@ export default function CompareStocksClient() {
   const [data, setData] = useState<CompareAnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usdToInrRate, setUsdToInrRate] = useState<number | null>(null);
+  const [inrToUsdRate, setInrToUsdRate] = useState<number | null>(null);
   const router = useRouter();
 
   const symbols = useMemo(
@@ -187,6 +197,39 @@ export default function CompareStocksClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    getUsdToInrRate().then(setUsdToInrRate).catch(() => undefined);
+    getInrToUsdRate().then(setInrToUsdRate).catch(() => undefined);
+  }, []);
+
+  const currencyBySymbol = useMemo(() => {
+    const map = new Map<string, string>();
+    data?.stock_details?.forEach((d) => {
+      if (d.symbol) map.set(d.symbol, (d.currency || "USD").toUpperCase());
+    });
+    return map;
+  }, [data]);
+
+  const formatDual = (value: number | null | undefined, currency?: string) => {
+    if (value == null || !isFinite(value as number)) return "—";
+    const cur = (currency || "USD").toUpperCase();
+    if (cur === "USD") {
+      return `${formatUsd(value)} / ${formatInr(toInrFromUsd(value, usdToInrRate ?? undefined))}`;
+    }
+    return `${formatInr(value)} / ${formatUsd(toUsdFromInr(value, inrToUsdRate ?? undefined))}`;
+  };
+
+  const formatPrimary = (value: number | null | undefined, currency?: string) => {
+    if (value == null || !isFinite(value as number)) return "—";
+    const cur = (currency || "USD").toUpperCase();
+    return cur === "USD" ? formatUsd(value) : formatInr(value);
+  };
+
+  const getCurrency = (symbol: string | undefined) => {
+    if (!symbol) return "USD";
+    return currencyBySymbol.get(symbol) || "USD";
+  };
+
   const OverviewTab = () => {
     if (!data) return null;
     const details = data.stock_details;
@@ -206,14 +249,14 @@ export default function CompareStocksClient() {
                 <td className="px-4 py-3 font-bold whitespace-nowrap" style={{ color: STOCK_COLORS[i % STOCK_COLORS.length] }}>{s.symbol}</td>
                 <td className="px-4 py-3 text-slate-700 whitespace-nowrap max-w-[160px] truncate">{s.name}</td>
                 <td className="px-4 py-3 whitespace-nowrap"><Badge variant="outline" className="text-xs">{s.sector || "—"}</Badge></td>
-                <td className="px-4 py-3 font-mono text-slate-700 whitespace-nowrap">₹{fmt(s.current_price)}</td>
-                <td className="px-4 py-3 font-mono text-slate-600 whitespace-nowrap">₹{fmt(s.min_price)}</td>
-                <td className="px-4 py-3 font-mono text-slate-600 whitespace-nowrap">₹{fmt(s.max_price)}</td>
+                <td className="px-4 py-3 font-mono text-slate-700 whitespace-nowrap">{formatDual(s.current_price, s.currency)}</td>
+                <td className="px-4 py-3 font-mono text-slate-600 whitespace-nowrap">{formatDual(s.min_price, s.currency)}</td>
+                <td className="px-4 py-3 font-mono text-slate-600 whitespace-nowrap">{formatDual(s.max_price, s.currency)}</td>
                 <td className="px-4 py-3 font-mono text-slate-600 whitespace-nowrap">{fmt(s.pe_ratio)}</td>
                 <td className="px-4 py-3 font-mono text-slate-600 whitespace-nowrap">{fmt(s.pe_min)}</td>
                 <td className="px-4 py-3 font-mono text-slate-600 whitespace-nowrap">{fmt(s.pe_max)}</td>
                 <td className="px-4 py-3 font-mono text-slate-600 whitespace-nowrap">{fmt(s.pe_avg)}</td>
-                <td className="px-4 py-3 font-mono text-emerald-700 whitespace-nowrap">{s.expected_price ? `₹${fmt(s.expected_price)}` : "—"}</td>
+                <td className="px-4 py-3 font-mono text-emerald-700 whitespace-nowrap">{s.expected_price ? formatDual(s.expected_price, s.currency) : "—"}</td>
                 <td className="px-4 py-3 whitespace-nowrap"><span className="text-xs font-semibold text-slate-600">{s.discount_level || "—"}</span></td>
                 <td className="px-4 py-3 whitespace-nowrap">{recBadge(s.recommendation)}</td>
               </tr>
@@ -229,6 +272,8 @@ export default function CompareStocksClient() {
     return (
       <div className="space-y-8">
         {data.linear_regression.map((pair) => {
+          const currencyA = getCurrency(pair.symbol_a);
+          const currencyB = getCurrency(pair.symbol_b);
           const scatterPoints = (pair.scatter || []).map((pt: { x: number; y: number }) => ({ x: pt.x, y: pt.y }));
           const regressionLine = (pair.scatter || [])
             .map((pt: { x: number; y_fit: number }) => ({ x: pt.x, y_fit: pt.y_fit }))
@@ -252,9 +297,35 @@ export default function CompareStocksClient() {
                 <ResponsiveContainer width="100%" height={320}>
                   <ComposedChart>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="x" type="number" domain={["auto", "auto"]} tickFormatter={(v) => `$${Number(v).toFixed(0)}`} label={{ value: pair.symbol_a, position: "insideBottom", offset: -5, fontSize: 12 }} />
-                    <YAxis tickFormatter={(v) => `$${Number(v).toFixed(0)}`} label={{ value: pair.symbol_b, angle: -90, position: "insideLeft", fontSize: 12 }} />
-                    <Tooltip formatter={(v: number) => `$${Number(v).toFixed(2)}`} />
+                    <XAxis
+                      dataKey="x"
+                      type="number"
+                      domain={["auto", "auto"]}
+                      tickFormatter={(v) => formatPrimary(Number(v), currencyA)}
+                      label={{ value: pair.symbol_a, position: "insideBottom", offset: -5, fontSize: 12 }}
+                    />
+                    <YAxis
+                      tickFormatter={(v) => formatPrimary(Number(v), currencyB)}
+                      label={{ value: pair.symbol_b, angle: -90, position: "insideLeft", fontSize: 12 }}
+                    />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const point = payload[0]?.payload || {};
+                        const actualValue = typeof point.y === "number" ? point.y : null;
+                        const fitValue = typeof point.y_fit === "number" ? point.y_fit : null;
+                        return (
+                          <div className="bg-white border border-slate-200 rounded-lg p-3 text-xs shadow-lg">
+                            <p className="font-bold text-slate-800 mb-1">
+                              {pair.symbol_a} vs {pair.symbol_b}
+                            </p>
+                            <p>{pair.symbol_a}: {formatDual(point.x, currencyA)}</p>
+                            {actualValue != null && <p>{pair.symbol_b} (Actual): {formatDual(actualValue, currencyB)}</p>}
+                            {fitValue != null && <p>{pair.symbol_b} (Fit): {formatDual(fitValue, currencyB)}</p>}
+                          </div>
+                        );
+                      }}
+                    />
                     <Scatter name="Actual" data={scatterPoints} fill="#94a3b8" opacity={0.5} />
                     <Line data={regressionLine} dataKey="y_fit" stroke="#2985CC" strokeWidth={2} dot={false} type="linear" name="Regression" />
                   </ComposedChart>

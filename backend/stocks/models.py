@@ -101,6 +101,7 @@ class Stock(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
+    is_fetching = models.BooleanField(default=False, help_text="Lock to prevent concurrent news fetches")
     
     class Meta:
         ordering = ['symbol']
