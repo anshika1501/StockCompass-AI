@@ -60,7 +60,8 @@ class Command(BaseCommand):
         failures = 0
         expected_dim = None
         for stock in qs:
-            if not options['force'] and hasattr(stock, "vector") and stock.vector.embedding:
+            existing_embedding = getattr(getattr(stock, "vector", None), "embedding", None)
+            if not options['force'] and existing_embedding is not None:
                 continue
             try:
                 context = _stock_context(stock)
