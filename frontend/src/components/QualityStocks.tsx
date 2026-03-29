@@ -23,11 +23,17 @@ const DISC_WEIGHT: Record<string, number> = { HIGH: 3, MEDIUM: 2, LOW: 1, NONE: 
 
 function computeQualityScore(s: PortfolioAnalysisStock): number {
     let score = 0;
-    score += (s.opportunity_score ?? 0) * 2;                        // weight ×2
-    score += (DISC_WEIGHT[s.discount_level] ?? 0) * 10;            // discount bonus
-    if (s.recommendation === 'BUY') score += 20;                    // BUY signal
+    score += (s.opportunity_score ?? 0) * 1.5;                        // Technical opportunity
+    score += (DISC_WEIGHT[s.discount_level] ?? 0) * 10;            // Discount bonus
+    if (s.recommendation === 'BUY') score += 15;                    // BUY signal
     if (s.recommendation === 'HOLD') score += 5;
-    if ((s.sentiment_score ?? 0) > 0) score += (s.sentiment_score ?? 0) * 15; // sentiment
+    
+    // HEAVILY weight Sentiment Score (-1.0 to 1.0)
+    // A +0.8 score gives 80 points, pushing them to the Top 3 instantly.
+    if (s.sentiment_score != null) {
+        score += (s.sentiment_score * 100);
+    }
+    
     if ((s.change_percent ?? 0) > 0) score += Math.min((s.change_percent ?? 0), 5) * 2;
     return Math.round(score * 10) / 10;
 }
@@ -124,8 +130,8 @@ export default function QualityStocks({ sectorSlug }: { sectorSlug: string }) {
                                 Best Return Picks — High Discount + High Return
                             </CardTitle>
                             <p className="text-[12px] text-gray-500 mt-1 leading-relaxed max-w-2xl">
-                                Stocks scored by combining opportunity score (weight ×2), discount level, BUY signal, and positive sentiment.
-                                High discount + strong opportunity = best investment pick in this sector.
+                                Stocks scored by combining opportunity score, discount level, BUY signal, and heavily weighted by <strong className="text-[#4F8DF7]">News Sentiment Score</strong>.
+                                High discount + strong opportunity + <strong>Top Sentiment</strong> = best investment pick in this sector.
                             </p>
                         </div>
                     </div>
