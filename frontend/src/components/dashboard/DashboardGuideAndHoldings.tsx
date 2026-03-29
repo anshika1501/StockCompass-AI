@@ -162,7 +162,7 @@ export default function DashboardGuideAndHoldings() {
               <div>
                 <p className="text-sm font-semibold text-slate-900 group-hover:text-violet-600">Use AI tools</p>
                 <p className="text-[11px] font-medium text-slate-500 mt-0.5">
-                  PCA, Sentiment, Predictions, and Chatbot are available in the sidebar under AI Tools.
+                  PCA, Sentiment, Predictions, and Stocky are available in the sidebar under AI Tools.
                 </p>
               </div>
             </Link>
@@ -182,7 +182,7 @@ export default function DashboardGuideAndHoldings() {
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-[#4F8DF7] ring-1 ring-slate-200 shadow-sm transition hover:ring-[#4F8DF7]/30"
           >
             <Bot className="h-4 w-4" />
-            Product Chat
+            Stocky
           </Link>
         </div>
       </div>

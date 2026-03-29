@@ -34,7 +34,7 @@ const aiToolItems: SidebarItem[] = [
   { label: "PCA & K-Means Clustering", href: "/stocks/pca-clustering", icon: Orbit },
   { label: "Sentiment AI", href: "/sentiment", icon: MessageCircle },
   { label: "Model Predictions", href: "/stocks/predictions", icon: BarChart3 },
-  { label: "Finance Assistant", href: "/chatbot", icon: Bot },
+  { label: "Stocky", href: "/chatbot", icon: Bot },
 ];
 
 export default function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {

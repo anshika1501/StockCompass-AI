@@ -82,7 +82,7 @@ const FALLBACK_LINES = [
   "• **Profile** — change **name**, **email**, **log out**",
   "• **Disclaimer** — advice and data limits",
   "",
-  "Or open **AI Tools → Chatbot** for **stock research** (separate from this help).",
+  "Or open **AI Tools → Stocky** for **stock research** (separate from this help).",
 ];
 
 export function getHelpResponse(rawQuery: string): string {

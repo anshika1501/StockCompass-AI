@@ -14,7 +14,7 @@ from .models import StockCategory, Stock, Portfolio, Holding, UserSecurityProfil
 from .serializers import PortfolioSerializer, HoldingSerializer, StockSerializer
 from .services import StockDataService
 from django.contrib.auth.hashers import make_password, check_password
-from .chatbot import ChatAdvisorService, OllamaClient, DEFAULT_CHAT_MODEL, DEFAULT_EMBED_MODEL, DEFAULT_OLLAMA_BASE
+from .chatbot import ChatAdvisorService, OllamaClient, DEFAULT_CHAT_MODEL, DEFAULT_OLLAMA_BASE
 from .analytics import (
     search_live_stocks,
     fetch_live_stock_detail,
@@ -2847,14 +2847,13 @@ def evaluate_predictions(request):
 def chat_with_stocks(request):
     """
     POST /api/chatbot/
-    Body: { "query": "...", "model": "tinyllama", "embed_model": "nomic-embed-text", "base_url": "http://localhost:11434" }
+    Body: { "query": "...", "model": "tinyllama", "base_url": "http://localhost:11434" }
     """
     question = request.data.get('query') if isinstance(request.data, dict) else None
     if not question or not str(question).strip():
         return Response({'error': 'query is required'}, status=400)
 
     chat_model = request.data.get('model') if isinstance(request.data, dict) else None
-    embed_model = request.data.get('embed_model') if isinstance(request.data, dict) else None
     base_url = request.data.get('base_url') if isinstance(request.data, dict) else None
 
     # Try to handle portfolio CRUD via deterministic intent detection.
@@ -2866,7 +2865,6 @@ def chat_with_stocks(request):
         result = ChatAdvisorService().answer(
             str(question),
             chat_model=chat_model,
-            embed_model=embed_model,
             base_url=base_url,
         )
         return Response(result)
