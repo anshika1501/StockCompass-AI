@@ -116,7 +116,9 @@ export function AuthScreen({ emphasizeRegister = false }: { emphasizeRegister?: 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create account");
 
-      router.push("/login?registered=true");
+      // Redirect to optional Telegram linking page
+      const encodedEmail = encodeURIComponent(data.email || regEmail);
+      router.push(`/connect-telegram?email=${encodedEmail}`);
     } catch (err: any) {
       setError(err.message || "Registration failed");
     } finally {

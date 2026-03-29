@@ -332,11 +332,11 @@ export default function PortfolioDetailPage() {
               <ArrowLeft className="h-3.5 w-3.5" />
               All Portfolios
             </Link>
-            <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               {data.name}
             </h1>
             {data.description && (
-              <p className="mt-1 text-sm text-slate-400">{data.description}</p>
+              <p className="mt-1 text-sm text-slate-600">{data.description}</p>
             )}
           </div>
           <button

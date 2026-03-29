@@ -27,7 +27,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY') or secrets.token_urlsafe(50)
 DEBUG = env_bool('DJANGO_DEBUG', False)
 
 # Never default to wildcard in production; require explicit host list via env.
-ALLOWED_HOSTS = [h.strip() for h in os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1',).split(',') if h.strip()]
 
 
 # Application definition
@@ -190,3 +190,9 @@ CORS_ALLOWED_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+# ── Third-party integrations ──────────────────────────────────────────────────
+
+# Telegram Bot token (from @BotFather). Required to send OTPs and handle
+# the /start linking command via the webhook endpoint.
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')

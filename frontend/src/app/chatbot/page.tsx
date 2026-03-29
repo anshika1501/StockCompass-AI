@@ -27,9 +27,15 @@ import { Input } from "@/components/ui/input";
 
 const stockStarterPrompts = [
   "What is the risk level for TCS vs INFY this month?",
-  "Compare HDFCBANK.NS and ICICIBANK.NS and tell me which is better to buy now.",
   "Give me a diversified portfolio suggestion across 3 sectors.",
   "Is RELIANCE.NS overvalued? Should I buy or wait?",
+];
+
+const crudStarterPrompts = [
+  "Create a new portfolio named Retirement",
+  "Show my portfolios",
+  "Add 10 shares of RELIANCE.NS at 2950 to my Retirement portfolio",
+  "Rename portfolio Retirement to My Future",
 ];
 
 export default function ChatbotPage() {
@@ -201,46 +207,62 @@ export default function ChatbotPage() {
                     </div>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {stockStarterPrompts.map((p) => (
-                    <Button key={p} variant="secondary" size="sm" className="text-left" onClick={() => setQuery(p)}>
-                      <Sparkles className="mr-1 h-4 w-4 text-amber-500" />
-                      {p}
-                    </Button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-3">
-                  <Button onClick={askStock} disabled={loading} type="button">
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ask"}
-                  </Button>
-                  {error && <span className="text-sm text-red-600">{error}</span>}
-                </div>
-                {answer && (
-                  <div className="mt-4 space-y-3">
-                    <div className="rounded-lg border bg-white p-4 prose prose-slate max-w-none">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{answer.answer}</ReactMarkdown>
-                    </div>
-                    {answer.sources.length > 0 && (
-                      <div className="rounded-lg border bg-slate-900 p-3 text-slate-50">
-                        <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-slate-300">
-                          <ShieldAlert className="h-4 w-4 text-amber-300" />
-                          Sources (matched stocks)
-                        </div>
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          {answer.sources.map((s) => (
-                            <div key={s.symbol} className="rounded-md bg-slate-800/60 p-3 text-sm">
-                              <div className="font-semibold">
-                                {s.symbol} — {s.name}
-                              </div>
-                              <div className="text-xs text-slate-300">Sector: {s.sector}</div>
-                              <div className="text-xs text-slate-400">Similarity: {(1 - s.distance).toFixed(3)}</div>
-                            </div>
-                          ))}
-                        </div>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="mb-2 text-sm font-semibold text-slate-700">Market Research Examples:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {stockStarterPrompts.map((p) => (
+                          <Button key={p} variant="secondary" size="sm" className="text-left" onClick={() => setQuery(p)}>
+                            <Sparkles className="mr-1 h-4 w-4 text-amber-500" />
+                            {p}
+                          </Button>
+                        ))}
                       </div>
-                    )}
+                    </div>
+                    <div>
+                      <h4 className="mb-2 text-sm font-semibold text-slate-700">Portfolio Management Examples:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {crudStarterPrompts.map((p) => (
+                          <Button key={p} variant="secondary" size="sm" className="text-left" onClick={() => setQuery(p)}>
+                            <Settings2 className="mr-1 h-4 w-4 text-emerald-500" />
+                            {p}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                )}
+                  <div className="flex items-center gap-3 mt-4">
+                    <Button onClick={askStock} disabled={loading} type="button">
+                      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ask"}
+                    </Button>
+                    {error && <span className="text-sm text-red-600">{error}</span>}
+                  </div>
+                  {answer && (
+                    <div className="mt-6 space-y-3">
+                      <div className="rounded-lg border bg-white p-4 prose prose-slate max-w-none">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{answer.answer}</ReactMarkdown>
+                      </div>
+                      {answer.sources && answer.sources.length > 0 && (
+                        <div className="rounded-lg border bg-slate-900 p-3 text-slate-50 mt-4">
+                          <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-slate-300">
+                            <ShieldAlert className="h-4 w-4 text-amber-300" />
+                            Sources (nearest stocks)
+                          </div>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {answer.sources.map((s) => (
+                              <div key={s.symbol} className="rounded-md bg-slate-800/60 p-3 text-sm">
+                                <div className="font-semibold">
+                                  {s.symbol} — {s.name}
+                                </div>
+                                <div className="text-xs text-slate-300">Sector: {s.sector}</div>
+                                <div className="text-xs text-slate-400">Similarity: {(1 - s.distance).toFixed(3)}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
               </TabsContent>
             </Tabs>
           </CardContent>

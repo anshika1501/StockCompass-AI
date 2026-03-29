@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Lock, Smartphone, Send, User, ChevronRight, Share2, Shield, Eye, EyeOff } from "lucide-react";
+import Link from "next/link";
+import { Loader2, Lock, Smartphone, Send, User, ChevronRight, Share2, Shield, Eye, EyeOff, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -342,6 +343,27 @@ export default function SettingsPage() {
               </p>
               
               <form onSubmit={handleSaveTelegram} className="space-y-4">
+                {/* Primary: Bot-guided linking */}
+                <Link
+                  href={`/connect-telegram?email=${encodeURIComponent(user?.email || '')}`}
+                  className="flex items-center gap-3 p-3 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 transition group"
+                >
+                  <div className="p-2 bg-sky-100 rounded-lg text-sky-500 group-hover:bg-sky-200 transition">
+                    <MessageCircle size={18} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-sky-700">Connect via Bot (Recommended)</p>
+                    <p className="text-xs text-sky-500">Guided step-by-step linking with auto-detect</p>
+                  </div>
+                  <ChevronRight size={16} className="text-sky-400" />
+                </Link>
+
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <div className="flex-1 h-px bg-slate-200" />
+                  or enter Chat ID manually
+                  <div className="flex-1 h-px bg-slate-200" />
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="telegram-id">Telegram Chat ID</Label>
                   <Input 
@@ -351,12 +373,12 @@ export default function SettingsPage() {
                     placeholder="e.g. 123456789"
                   />
                   <p className="text-xs text-slate-400 mt-1">
-                    Send /start to our bot to get your Chat ID.
+                    {telegramId ? '✅ Telegram is linked' : 'Not yet linked — use the button above for automatic setup.'}
                   </p>
                 </div>
-                <Button type="submit" disabled={savingTelegram} className="w-full bg-sky-500 hover:bg-sky-600 transition-colors">
+                <Button type="submit" disabled={savingTelegram} variant="outline" className="w-full border-sky-200 text-sky-700 hover:bg-sky-50">
                   {savingTelegram ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  {telegramId ? "Update Telegram ID" : "Link Telegram"}
+                  {telegramId ? "Update Chat ID" : "Save Chat ID"}
                 </Button>
               </form>
 

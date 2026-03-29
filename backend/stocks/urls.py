@@ -59,7 +59,11 @@ urlpatterns = [
     path('settings/', views.UserSettingsView.as_view(), name='user-settings'),
     path('recovery-method/', views.get_recovery_method, name='recovery-method'),
     path('verify-recovery/', views.verify_recovery, name='verify-recovery'),
+    path('request-otp/', views.request_otp, name='request-otp'),
+    path('verify-otp/', views.verify_otp, name='verify-otp'),
     path('reset-password/', views.reset_password, name='reset-password'),
+    path('telegram-webhook/', views.telegram_webhook, name='telegram-webhook'),
+    path('check-telegram-link/', views.check_telegram_link, name='check-telegram-link'),
 
     # Portfolio Management
     path('portfolio/create/', views.CreatePortfolioView.as_view(), name='create-portfolio'),
