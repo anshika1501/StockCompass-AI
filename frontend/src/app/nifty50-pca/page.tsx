@@ -2,6 +2,7 @@ import Navigation from '@/components/Navigation';
 import Nifty50PCAClient from './Nifty50PCAClient';
 import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
+import StockTicker from '@/components/dashboard/StockTicker';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +10,7 @@ export default function Nifty50PCAPage() {
     return (
         <div className="min-h-screen pb-20">
             <Navigation />
+            <StockTicker />
             <main className="container mx-auto px-4 mt-8">
                 <Link
                     href="/"

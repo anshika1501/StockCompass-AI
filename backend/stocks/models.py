@@ -23,6 +23,9 @@ class UserSecurityProfile(models.Model):
     """Security metadata for a user account."""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='security_profile')
     mpin_hash = models.CharField(max_length=128)
+    telegram_id = models.CharField(max_length=100, blank=True, null=True)
+    security_question = models.CharField(max_length=255, blank=True, null=True)
+    security_answer = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -98,6 +101,7 @@ class Stock(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
+    is_fetching = models.BooleanField(default=False, help_text="Lock to prevent concurrent news fetches")
     
     class Meta:
         ordering = ['symbol']

@@ -83,7 +83,7 @@ const SOURCE_LABEL: Record<string, string> = {
 };
 
 function LabelBadge({ label, size = "sm" }: { label: SentimentLabel; size?: "sm" | "lg" }) {
-  const cfg = LABEL_CONFIG[label];
+  const cfg = LABEL_CONFIG[label] || LABEL_CONFIG["NEUTRAL"];
   const Icon = cfg.icon;
   return (
     <span className={cn(
@@ -117,7 +117,7 @@ function ScoreBar({ score }: { score: number }) {
 // ---------------------------------------------------------------------------
 
 function ArticleCard({ a }: { a: Article }) {
-  const cfg = LABEL_CONFIG[a.label];
+  const cfg = LABEL_CONFIG[a.label] || LABEL_CONFIG["NEUTRAL"];
   return (
     <div className={cn(
       "rounded-2xl border p-4 transition-all hover:shadow-sm",
@@ -151,7 +151,7 @@ function ArticleCard({ a }: { a: Article }) {
         <div className="flex shrink-0 flex-col items-end gap-2">
           <LabelBadge label={a.label} />
           <span className={cn("text-sm font-extrabold tabular-nums", cfg.color)}>
-            {a.compound_score >= 0 ? "+" : ""}{a.compound_score.toFixed(3)}
+            {(a.compound_score ?? 0) >= 0 ? "+" : ""}{(a.compound_score ?? 0).toFixed(3)}
           </span>
           {a.url && (
             <a href={a.url} target="_blank" rel="noopener noreferrer"
@@ -176,7 +176,7 @@ function SectorCard({
   snapshot: SectorSnapshot;
   onClick: () => void;
 }) {
-  const cfg = LABEL_CONFIG[snapshot.label];
+  const cfg = LABEL_CONFIG[snapshot.label] || LABEL_CONFIG["NEUTRAL"];
   const Icon = cfg.icon;
   return (
     <button
@@ -200,10 +200,10 @@ function SectorCard({
         </p>
       </div>
 
-      <ScoreBar score={snapshot.avg_score} />
+      <ScoreBar score={snapshot.avg_score ?? 0} />
 
       <div className="flex items-center justify-between text-xs font-semibold">
-        <span className={cfg.color}>{snapshot.avg_score >= 0 ? "+" : ""}{snapshot.avg_score.toFixed(3)}</span>
+        <span className={cfg.color}>{(snapshot.avg_score ?? 0) >= 0 ? "+" : ""}{(snapshot.avg_score ?? 0).toFixed(3)}</span>
         <div className="flex gap-3 text-slate-400">
           <span className="text-emerald-500">▲{snapshot.bullish_count}</span>
           <span className="text-amber-500">–{snapshot.neutral_count}</span>
@@ -250,7 +250,7 @@ function SectorDetailPanel({
       {/* Summary row */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: "Avg Score", value: (snap.avg_score >= 0 ? "+" : "") + snap.avg_score.toFixed(3), color: LABEL_CONFIG[snap.label].color },
+          { label: "Avg Score", value: ((snap.avg_score ?? 0) >= 0 ? "+" : "") + (snap.avg_score ?? 0).toFixed(3), color: (LABEL_CONFIG[snap.label] || LABEL_CONFIG["NEUTRAL"]).color },
           { label: "Articles", value: snap.article_count, color: "text-slate-900" },
           { label: "Bullish", value: snap.bullish_count, color: "text-emerald-600" },
           { label: "Bearish", value: snap.bearish_count, color: "text-rose-600" },
@@ -310,9 +310,9 @@ function SectorDetailPanel({
                   <span className="text-xs text-slate-400">{s.article_count} art.</span>
                   <span className={cn(
                     "text-sm font-extrabold tabular-nums",
-                    LABEL_CONFIG[s.label].color,
+                    (LABEL_CONFIG[s.label] || LABEL_CONFIG["NEUTRAL"]).color,
                   )}>
-                    {s.avg_score >= 0 ? "+" : ""}{s.avg_score.toFixed(3)}
+                    {(s.avg_score ?? 0) >= 0 ? "+" : ""}{(s.avg_score ?? 0).toFixed(3)}
                   </span>
                   <LabelBadge label={s.label} />
                 </div>
@@ -337,14 +337,56 @@ function StockSearchPanel() {
     ticker: string; avg_score: number; label: SentimentLabel; article_count: number; articles: Article[];
   } | null>(null);
 
+  // Autocomplete state
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Debounced autocomplete fetch
+  useEffect(() => {
+    const term = ticker.trim();
+    if (term.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/search/?q=${encodeURIComponent(term)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSuggestions(data);
+          setShowSuggestions(true);
+        }
+      } catch (e) {
+        console.error("Autocomplete error:", e);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [ticker]);
+
+  const onSelectSuggestion = (s: any) => {
+    setTicker(s.ticker);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    // Automatically trigger search
+    performSearch(s.ticker);
+  };
+
   const search = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!ticker.trim()) return;
+    performSearch(ticker);
+  };
+
+  const performSearch = async (val: string) => {
+    const term = val.trim();
+    if (!term) return;
     setLoading(true);
     setError(null);
     setResult(null);
+    setShowSuggestions(false);
     try {
-      const res = await fetch(`${API_BASE}/sentiment/stock/${ticker.trim().toUpperCase()}/`);
+      const res = await fetch(`${API_BASE}/sentiment/stock/${term.toUpperCase()}/`);
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error || "No data found for this ticker.");
@@ -359,7 +401,7 @@ function StockSearchPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-[0_4px_20px_rgb(0,0,0,0.04)]">
+      <div className="relative rounded-3xl border border-slate-200/80 bg-white p-6 shadow-[0_4px_20px_rgb(0,0,0,0.04)]">
         <div className="h-1 -mx-6 -mt-6 mb-5 rounded-t-3xl bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
         <form onSubmit={search} className="flex gap-3">
           <div className="relative flex-1">
@@ -369,13 +411,41 @@ function StockSearchPanel() {
               placeholder="Enter ticker (e.g. TCS.NS, RELIANCE.NS)"
               value={ticker}
               onChange={(e) => setTicker(e.target.value)}
+              onFocus={() => setShowSuggestions(suggestions.length > 0)}
               className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 pl-12 pr-4 text-sm font-medium text-slate-900 outline-none transition focus:border-[#4F8DF7] focus:bg-white focus:ring-2 focus:ring-[#4F8DF7]/10"
             />
+
+            {/* Suggestions Dropdown */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-72 overflow-auto rounded-2xl border border-slate-200/60 bg-white/95 p-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200">
+                <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Quick Matches
+                </div>
+                {suggestions.map((s, i) => (
+                  <button
+                    key={`${s.ticker}-${i}`}
+                    type="button"
+                    onMouseDown={() => onSelectSuggestion(s)}
+                    className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition hover:bg-[#4F8DF7]/5 hover:text-[#4F8DF7] group"
+                  >
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-slate-900 group-hover:text-[#4F8DF7]">{s.ticker}</span>
+                      <span className="text-[11px] text-slate-500 line-clamp-1">{s.name}</span>
+                    </div>
+                    {s.sector && (
+                      <span className="ml-4 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
+                        {s.sector}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="h-12 rounded-xl bg-[#4F8DF7] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-600 disabled:opacity-50"
+            className="h-12 rounded-xl bg-[#4F8DF7] px-6 text-sm font-extrabold text-white shadow-lg shadow-[#4F8DF7]/20 transition active:scale-[0.98] hover:bg-blue-600 disabled:opacity-50"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Analyze"}
           </button>
@@ -391,25 +461,37 @@ function StockSearchPanel() {
       {result && (
         <div className="space-y-4">
           <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-2xl font-extrabold text-slate-900">{result.ticker}</p>
-                <p className="text-sm text-slate-500">{result.article_count} articles analysed</p>
+            {(result as any).fetching ? (
+              <div className="flex flex-col items-center justify-center py-4">
+                <Loader2 className="mb-2 h-6 w-6 animate-spin text-[#4F8DF7]" />
+                <p className="text-sm font-medium text-slate-600">{(result as any).message || "Fetching latest news..."}</p>
+                <p className="mt-1 text-xs text-slate-400">This usually takes 10-20 seconds.</p>
               </div>
-              <div className="flex flex-col items-end gap-2">
-                <LabelBadge label={result.label} size="lg" />
-                <span className={cn("text-2xl font-extrabold tabular-nums", LABEL_CONFIG[result.label].color)}>
-                  {result.avg_score >= 0 ? "+" : ""}{result.avg_score.toFixed(3)}
-                </span>
-              </div>
-            </div>
-            <div className="mt-4">
-              <ScoreBar score={result.avg_score} />
-            </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-2xl font-extrabold text-slate-900">{result.ticker}</p>
+                    <p className="text-sm text-slate-500">{result.article_count} articles analysed</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <LabelBadge label={result.label} size="lg" />
+                    <span className={cn("text-2xl font-extrabold tabular-nums", (LABEL_CONFIG[result.label] || LABEL_CONFIG["NEUTRAL"]).color)}>
+                      {(result.avg_score ?? 0) >= 0 ? "+" : ""}{(result.avg_score ?? 0).toFixed(3)}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <ScoreBar score={result.avg_score} />
+                </div>
+              </>
+            )}
           </div>
 
           <div className="space-y-3">
-            {result.articles.map((a) => <ArticleCard key={a.id} a={a} />)}
+            {(result.articles || []).map((a, idx) => (
+              <ArticleCard key={a.id || `art-${result.ticker}-${idx}`} a={a} />
+            ))}
           </div>
         </div>
       )}

@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { User, Settings, LogOut, Loader2 } from "lucide-react";
@@ -10,18 +8,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { updateProfile } from "@/lib/profile";
 import { cn } from "@/lib/utils";
 
 type UserShape = { id?: number; name: string; email?: string };
@@ -44,11 +30,6 @@ function persistUser(u: UserShape) {
 export function DashboardUserMenu({ variant }: { variant: "desktop" | "mobile" }) {
   const router = useRouter();
   const [user, setUser] = useState<UserShape | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [draftName, setDraftName] = useState("");
-  const [draftEmail, setDraftEmail] = useState("");
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     function sync() {
@@ -63,45 +44,13 @@ export function DashboardUserMenu({ variant }: { variant: "desktop" | "mobile" }
     };
   }, []);
 
-  useEffect(() => {
-    if (settingsOpen && user) {
-      setDraftName(user.name ?? "");
-      setDraftEmail(user.email ?? "");
-      setSaveError(null);
-    }
-  }, [settingsOpen, user]);
+
 
   const logout = () => {
     localStorage.removeItem("stock_compass_token");
     localStorage.removeItem("stock_compass_user");
     window.dispatchEvent(new Event("auth_change"));
-    setSettingsOpen(false);
     router.push("/");
-  };
-
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    setSaveError(null);
-    setSaving(true);
-    try {
-      const updated = await updateProfile({
-        name: draftName.trim(),
-        email: draftEmail.trim(),
-      });
-    const merged: UserShape = {
-        ...user,
-        ...updated,
-        id: updated?.id ?? user?.id,
-      };
-      persistUser(merged);
-      setUser(merged);
-      setSettingsOpen(false);
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Could not save");
-    } finally {
-      setSaving(false);
-    }
   };
 
   if (!user) return null;
@@ -146,7 +95,7 @@ export function DashboardUserMenu({ variant }: { variant: "desktop" | "mobile" }
         <DropdownMenuContent align="end" className="z-[100] w-52 border-slate-200 bg-white shadow-lg">
           <DropdownMenuItem
             className="cursor-pointer gap-2"
-            onSelect={() => setSettingsOpen(true)}
+            onSelect={() => router.push("/dashboard/settings")}
           >
             <Settings className="h-4 w-4 text-slate-600" />
             Settings
@@ -158,66 +107,6 @@ export function DashboardUserMenu({ variant }: { variant: "desktop" | "mobile" }
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent className="border-slate-200 bg-white sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-slate-900">Account settings</DialogTitle>
-            <DialogDescription className="text-slate-600">
-              Update your display name and email. Your email is also your sign-in username.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSaveProfile} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="settings-name" className="text-slate-700">
-                Display name
-              </Label>
-              <Input
-                id="settings-name"
-                value={draftName}
-                onChange={(e) => setDraftName(e.target.value)}
-                className="border-slate-200"
-                autoComplete="name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="settings-email" className="text-slate-700">
-                Email
-              </Label>
-              <Input
-                id="settings-email"
-                type="email"
-                value={draftEmail}
-                onChange={(e) => setDraftEmail(e.target.value)}
-                className="border-slate-200"
-                autoComplete="email"
-              />
-            </div>
-            {saveError ? <p className="text-sm text-red-600">{saveError}</p> : null}
-            <DialogFooter className="gap-2 border-0 pt-0 sm:justify-end">
-              <Button type="button" variant="outline" onClick={() => setSettingsOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={saving} className="bg-[#4F8DF7] hover:bg-blue-600">
-                {saving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving…
-                  </>
-                ) : (
-                  "Save changes"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-          <div className="border-t border-slate-100 pt-4">
-            <Button type="button" variant="ghost" className="w-full text-red-600 hover:bg-red-50 hover:text-red-700" onClick={logout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Log out and go to home
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }

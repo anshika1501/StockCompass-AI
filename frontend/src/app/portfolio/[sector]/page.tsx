@@ -2,11 +2,13 @@
 import { notFound } from "next/navigation";
 import Navigation from "@/components/Navigation";
 import PortfolioAnalysis from "@/components/PortfolioAnalysis";
+import QualityStocks from "@/components/QualityStocks";
 import { getStocksBySector } from "@/lib/stock-data";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Trophy } from "lucide-react";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Nifty50PCAClient from "@/app/nifty50-pca/Nifty50PCAClient";
+import StockTicker from "@/components/dashboard/StockTicker";
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +39,7 @@ export default async function SectorPage({
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
+      <StockTicker />
 
       <main className="container mx-auto px-6 lg:px-12 mt-12 pb-24">
         <Link href={`/portfolios?market=${marketParam}`} className="inline-flex items-center text-sm font-semibold text-[#1F2937] hover:text-[#4F8DF7] mb-10 transition-all group uppercase tracking-[0.12em]">
@@ -67,8 +70,15 @@ export default async function SectorPage({
                 </div>
                 Stocks Table
               </TabsTrigger>
-              <TabsTrigger
-                value="pca"
+              <TabsTrigger 
+                value="quality" 
+                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none pb-3 border-b-2 border-transparent text-muted-foreground font-medium text-sm transition-all flex items-center gap-2"
+              >
+                <Trophy size={15} className="text-[#4F8DF7]" />
+                Quality Stocks
+              </TabsTrigger>
+              <TabsTrigger 
+                value="pca" 
                 className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none pb-3 border-b-2 border-transparent text-muted-foreground font-medium text-sm transition-all flex items-center gap-2"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg>
@@ -80,6 +90,9 @@ export default async function SectorPage({
               <PortfolioAnalysis sectorSlug={sectorId} market={marketParam} />
             </TabsContent>
 
+            <TabsContent value="quality" className="mt-0 outline-none">
+              <QualityStocks sectorSlug={sectorId} />
+            </TabsContent>
             <TabsContent value="pca" className="mt-0 outline-none">
               <Nifty50PCAClient sectorSlug={sectorId} sectorName={sector.name} />
             </TabsContent>

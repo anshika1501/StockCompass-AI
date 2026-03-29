@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Navigation from "@/components/Navigation";
 import StockChartWithRanges from "@/components/StockChartWithRanges";
 import StockAnalyticsPanel from "./StockAnalyticsPanel";
+import MarketHeadlines from "@/components/MarketHeadlines";
 import AiInsights from "@/components/AiInsights";
 import { getStockByTicker } from "@/lib/stock-data";
 import { ChevronLeft, Info, TrendingUp, TrendingDown, Globe, MapPin, Users, Plus } from "lucide-react";
@@ -145,7 +146,6 @@ export default async function StockPage({ params, searchParams }: { params: { ti
               <TabsList className="bg-white border border-slate-200 w-full justify-start h-14 p-1 rounded-2xl mb-6 shadow-sm">
                 <TabsTrigger value="overview" className="rounded-xl px-8 h-full data-[state=active]:bg-[#4F8DF7] data-[state=active]:text-white font-bold text-xs uppercase tracking-widest text-slate-500 transition-all">Overview</TabsTrigger>
                 <TabsTrigger value="financials" className="rounded-xl px-8 h-full data-[state=active]:bg-[#4F8DF7] data-[state=active]:text-white font-bold text-xs uppercase tracking-widest text-slate-500 transition-all">Financials</TabsTrigger>
-                <TabsTrigger value="news" className="rounded-xl px-8 h-full data-[state=active]:bg-[#4F8DF7] data-[state=active]:text-white font-bold text-xs uppercase tracking-widest text-slate-500 transition-all">News</TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview">
@@ -198,6 +198,7 @@ export default async function StockPage({ params, searchParams }: { params: { ti
                   </CardContent>
                 </Card>
               </TabsContent>
+
             </Tabs>
           </div>
 
@@ -259,6 +260,9 @@ export default async function StockPage({ params, searchParams }: { params: { ti
                 <span className="text-xl font-bold text-slate-900 tracking-tight">{stock.peRatio ? stock.peRatio.toFixed(1) : 'NAV'}</span>
               </div>
             </div>
+
+            {/* Market Headlines (News & Sentiment) */}
+            <MarketHeadlines ticker={stock.ticker} />
 
             {/* AI Insights Card */}
             <div className="rounded-3xl overflow-hidden bg-gradient-to-br from-violet-50 to-white border border-violet-100 shadow-sm">

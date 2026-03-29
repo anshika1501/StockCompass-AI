@@ -143,6 +143,9 @@ export interface PortfolioAnalysisStock {
   discount_level: string;
   opportunity_score: number;
   sector: string;
+  market_cap?: number | null;
+  change?: number | null;
+  change_percent?: number | null;
   sentiment_score?: number | null;
   sentiment_label?: 'BULLISH' | 'NEUTRAL' | 'BEARISH' | null;
   sentiment_is_fallback?: boolean;
@@ -565,5 +568,40 @@ export function formatMoney(value: number | null | undefined, currency: string =
     }).format(value);
   } catch {
     return `₹${value.toFixed(2)}`;
+  }
+}
+
+// ─── On-Demand Sentiment ──────────────────────────────────────────
+
+export interface SentimentArticleData {
+  headline: string;
+  snippet: string;
+  url: string;
+  source: string;
+  published_at: string;
+  sentiment_score: number;
+  sentiment_label: 'BULLISH' | 'NEUTRAL' | 'BEARISH';
+}
+
+export interface StockSentimentResponse {
+  ticker: string;
+  fetching: boolean;
+  message?: string;
+  sentiment_score?: number;
+  sentiment_label?: 'BULLISH' | 'NEUTRAL' | 'BEARISH';
+  news?: SentimentArticleData[];
+  error?: string;
+}
+
+export async function fetchStockSentiment(ticker: string): Promise<StockSentimentResponse> {
+  try {
+    const res = await fetch(`${API_BASE}/sentiment/stock/${encodeURIComponent(ticker)}/`, { cache: 'no-store' });
+    if (!res.ok) {
+      const detail = await res.json().catch(() => ({}));
+      return { ticker, fetching: false, error: detail.error || `API error ${res.status}` };
+    }
+    return await res.json();
+  } catch (err) {
+    return { ticker, fetching: false, error: err instanceof Error ? err.message : 'Unknown error fetching sentiment' };
   }
 }
