@@ -7,6 +7,7 @@ on:
 
 jobs:
   deploy:
+    if: contains(github.event.head_commit.message, 'Release') || contains(github.event.head_commit.message, 'Repelase')
     runs-on: ubuntu-latest
 
     steps:
