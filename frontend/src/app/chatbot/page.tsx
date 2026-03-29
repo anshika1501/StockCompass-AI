@@ -108,20 +108,20 @@ export default function ChatbotPage() {
               <CardTitle className="text-xl">Finance Assistant</CardTitle>
             </div>
             <p className="text-sm text-slate-500">
-              <strong>Stock research</strong> uses your backend (pgvector + LLM) for market-style questions.{" "}
-              <strong>Product help</strong> answers how to use the app.
+              <strong>Product help</strong> answers how to use the app. <strong>Stock research</strong> uses your
+              backend (pgvector + LLM) for market-style questions.
             </p>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="stocks" className="w-full">
+            <Tabs defaultValue="help" className="w-full">
               <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-2 bg-slate-100/80 p-1 sm:w-auto sm:inline-flex">
-                <TabsTrigger value="stocks" className="gap-2 py-2.5">
-                  <LineChart className="h-4 w-4" />
-                  Stock research
-                </TabsTrigger>
                 <TabsTrigger value="help" className="gap-2 py-2.5">
                   <LifeBuoy className="h-4 w-4" />
                   Product help
+                </TabsTrigger>
+                <TabsTrigger value="stocks" className="gap-2 py-2.5">
+                  <LineChart className="h-4 w-4" />
+                  Stock research
                 </TabsTrigger>
               </TabsList>
 
