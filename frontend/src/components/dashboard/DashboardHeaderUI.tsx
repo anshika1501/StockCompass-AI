@@ -126,29 +126,47 @@ export default function DashboardHeaderUI() {
           )}
 
           {/* Search Suggestions Dropdown */}
-          {showDropdown && searchResults.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-[#0f172a] border border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden divide-y divide-slate-800 animate-in fade-in slide-in-from-top-2">
-              <div className="px-4 py-2 border-b border-slate-800 bg-slate-900/50">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{searchResults.length} results found</p>
-              </div>
-              {searchResults.map((stock) => (
-                <div 
-                  key={stock.ticker}
-                  onClick={() => selectStock(stock)}
-                  className="flex items-center justify-between px-5 py-4 hover:bg-[#4F8DF7] group cursor-pointer transition-all"
-                >
-                  <div className="flex flex-col">
-                    <span className="text-sm font-black text-white group-hover:text-white">{stock.ticker}</span>
-                    <span className="text-[11px] font-medium text-slate-400 group-hover:text-blue-100">{stock.name}</span>
+          {showDropdown && (
+            <div className="absolute top-full left-0 right-0 z-50 mt-3 max-h-[400px] overflow-auto rounded-3xl border border-slate-200/60 bg-white/95 p-2 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200">
+              {searchResults.length > 0 ? (
+                <>
+                  <div className="px-4 py-2 mb-1">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Matched Stocks</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-slate-700 uppercase group-hover:bg-white/20 group-hover:text-white group-hover:border-white/30 tracking-widest">
-                      {stock.sector}
-                    </span>
-                    <ChevronRight size={14} className="text-slate-600 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                  <div className="space-y-1">
+                    {searchResults.map((stock) => (
+                      <button
+                        key={stock.ticker}
+                        type="button"
+                        onMouseDown={() => selectStock(stock)}
+                        className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left transition-all hover:bg-[#4F8DF7]/5 group"
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-sm font-extrabold text-slate-900 group-hover:text-[#4F8DF7] transition-colors">{stock.ticker}</span>
+                          <span className="text-[11px] font-medium text-slate-500 line-clamp-1 group-hover:text-slate-600">{stock.name}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {stock.sector && (
+                            <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500 uppercase tracking-wider group-hover:bg-[#4F8DF7]/10 group-hover:text-[#4F8DF7]">
+                              {stock.sector}
+                            </span>
+                          )}
+                          <ChevronRight size={14} className="text-slate-300 group-hover:text-[#4F8DF7] group-hover:translate-x-1 transition-all" />
+                        </div>
+                      </button>
+                    ))}
                   </div>
+                </>
+              ) : !isSearching && query.length > 0 ? (
+                <div className="py-8 text-center">
+                  <p className="text-sm font-medium text-slate-400">No stocks found for "{query}"</p>
                 </div>
-              ))}
+              ) : isSearching ? (
+                <div className="py-8 flex flex-col items-center justify-center gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin text-[#4F8DF7]" />
+                  <p className="text-xs font-medium text-slate-400">Searching markets...</p>
+                </div>
+              ) : null}
             </div>
           )}
 

@@ -734,6 +734,7 @@ def stock_chart(request, ticker):
 
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def stock_search(request):
     """
     GET /api/search/?q=query
@@ -3029,46 +3030,6 @@ def sentiment_sector_detail(request, sector_slug):
     })
 
 
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def sentiment_stock_detail(request, ticker):
-    """
-    GET /api/sentiment/stock/<ticker>/
-    Returns sentiment score + recent articles for a single ticker.
-    """
-    from .models import SentimentArticle
-    from django.db.models import Avg, Count
-
-    ticker_upper = ticker.upper()
-    qs = SentimentArticle.objects.filter(ticker=ticker_upper).order_by('-fetched_at')[:30]
-    if not qs.exists():
-        return Response({'error': 'No sentiment data for this ticker yet.'}, status=404)
-
-    agg = qs.aggregate(avg=Avg('compound_score'), total=Count('id'))
-    avg_score = round(agg['avg'] or 0.0, 4)
-    label = 'BULLISH' if avg_score >= 0.05 else ('BEARISH' if avg_score <= -0.05 else 'NEUTRAL')
-
-    articles = [
-        {
-            'id':            a.id,
-            'headline':      a.headline,
-            'snippet':       a.snippet,
-            'source':        a.source,
-            'url':           a.url,
-            'published_at':  a.published_at.isoformat() if a.published_at else None,
-            'compound_score': a.compound_score,
-            'label':          a.label,
-        }
-        for a in qs
-    ]
-
-    return Response({
-        'ticker':        ticker_upper,
-        'avg_score':     avg_score,
-        'label':         label,
-        'article_count': agg['total'],
-        'articles':      articles,
-    })
 
 
 @api_view(['POST'])
@@ -3758,13 +3719,14 @@ def sentiment_stock_detail(request, ticker):
         total_score = 0
         for art in recent_articles[:10]:
             articles_data.append({
+                "id": art.id,
                 "headline": art.headline,
                 "snippet": art.snippet,
                 "url": art.url,
                 "source": art.source,
-                "published_at": art.published_at,
-                "sentiment_score": art.compound_score,
-                "sentiment_label": art.label
+                "published_at": art.published_at.isoformat() if art.published_at else None,
+                "compound_score": art.compound_score,
+                "label": art.label
             })
             total_score += art.compound_score
             
@@ -3772,16 +3734,21 @@ def sentiment_stock_detail(request, ticker):
         return Response({
             "ticker": ticker,
             "fetching": False,
-            "sentiment_score": avg_score,
-            "sentiment_label": 'BULLISH' if avg_score >= 0.05 else ('BEARISH' if avg_score <= -0.05 else 'NEUTRAL'),
-            "news": articles_data
+            "avg_score": avg_score,
+            "label": 'BULLISH' if avg_score >= 0.05 else ('BEARISH' if avg_score <= -0.05 else 'NEUTRAL'),
+            "article_count": len(articles_data),
+            "articles": articles_data
         })
         
     if stock.is_fetching:
         return Response({
             "ticker": ticker,
             "fetching": True,
-            "message": "Data is being updated..."
+            "message": "Data is being updated...",
+            "avg_score": 0,
+            "article_count": 0,
+            "articles": [],
+            "label": "NEUTRAL"
         })
         
     stock.is_fetching = True
@@ -3794,7 +3761,11 @@ def sentiment_stock_detail(request, ticker):
     return Response({
         "ticker": ticker,
         "fetching": True,
-        "message": "Data is being updated..."
+        "message": "Data is being updated...",
+        "avg_score": 0,
+        "article_count": 0,
+        "articles": [],
+        "label": "NEUTRAL"
     })
 
 
