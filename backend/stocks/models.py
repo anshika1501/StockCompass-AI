@@ -26,6 +26,14 @@ class UserSecurityProfile(models.Model):
     telegram_id = models.CharField(max_length=100, blank=True, null=True)
     security_question = models.CharField(max_length=255, blank=True, null=True)
     security_answer = models.CharField(max_length=255, blank=True, null=True)
+    
+    # Forgot Password System Fields
+    otp_hash = models.CharField(max_length=128, blank=True, null=True)
+    otp_expiry = models.DateTimeField(blank=True, null=True)
+    otp_attempts = models.IntegerField(default=0)
+    last_otp_requested_at = models.DateTimeField(blank=True, null=True)
+    reset_token_hash = models.CharField(max_length=128, blank=True, null=True)
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

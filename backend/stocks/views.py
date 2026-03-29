@@ -2432,371 +2432,6 @@ def stock_predictions(request):
             logger.error(f"Prediction error: {e}")
             return Response({'error': str(e)}, status=500)
 
-
-from rest_framework.views import APIView
-from rest_framework import status
-from django.contrib.auth import get_user_model
-from .models import Portfolio, Holding
-from .serializers import PortfolioSerializer, HoldingSerializer
-
-def get_user_from_request(request):
-    """Resolve the authenticated user from DRF auth or a Token header."""
-    if getattr(request, "user", None) and request.user.is_authenticated:
-        return request.user
-
-    auth_header = request.headers.get("Authorization", "")
-    prefixes = ("Token ", "Bearer ")
-    for prefix in prefixes:
-        if auth_header.startswith(prefix):
-            token_key = auth_header[len(prefix):].strip()
-            try:
-                token = Token.objects.select_related("user").get(key=token_key)
-                return token.user
-            except Token.DoesNotExist:
-                return None
-    return None
-
-
-class UpdateProfileView(APIView):
-    """PATCH /api/profile/ — update display name and/or email (username) for the session user."""
-
-    authentication_classes = [TokenAuthentication, SessionAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def patch(self, request):
-        user = get_user_from_request(request)
-        if not user:
-            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
-
-        User = get_user_model()
-        name = request.data.get("name")
-        new_email = request.data.get("email")
-
-        if name is not None:
-            user.first_name = (name or "").strip()[:150]
-
-        if new_email is not None:
-            new_email = (new_email or "").strip().lower()
-            if not new_email:
-                return Response({"error": "Email cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
-            if new_email != user.email:
-                if User.objects.filter(username=new_email).exclude(pk=user.pk).exists():
-                    return Response(
-                        {"error": "That email is already in use."},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-                user.username = new_email
-                user.email = new_email
-
-        user.save()
-        display_name = user.first_name or (
-            user.email.split("@")[0] if user.email else "User"
-        )
-        return Response(
-            {
-                "user": {
-                    "id": user.id,
-                    "email": user.email,
-                    "name": display_name,
-                }
-            }
-        )
-
-
-class CreatePortfolioView(APIView):
-    authentication_classes = [TokenAuthentication, SessionAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        user = get_user_from_request(request)
-        if not user:
-            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
-            
-        serializer = PortfolioSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(user=user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class GetPortfoliosView(APIView):
-    authentication_classes = [TokenAuthentication, SessionAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        user = get_user_from_request(request)
-        if not user:
-            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
-            
-        portfolios = Portfolio.objects.filter(user=user)
-        serializer = PortfolioSerializer(portfolios, many=True)
-        return Response(serializer.data)
-
-
-class PortfolioDetailView(APIView):
-    """
-    GET /api/portfolio/<id>/detail/
-    Returns an enriched portfolio with live prices, P&L, analytics.
-    """
-    authentication_classes = [TokenAuthentication, SessionAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, id):
-        import yfinance as yf
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-
-        user = get_user_from_request(request)
-        if not user:
-            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
-
-        portfolio = Portfolio.objects.filter(id=id, user=user).first()
-        if not portfolio:
-            return Response({"error": "Portfolio not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        holdings = list(portfolio.holdings.all())
-        unique_tickers = list({h.ticker for h in holdings})
-
-        # ── fetch live prices in parallel ──────────────────────────────
-        def _fetch_price(ticker):
-            try:
-                info = yf.Ticker(ticker).info or {}
-                cp = (info.get("currentPrice") or info.get("regularMarketPrice")
-                      or info.get("previousClose") or 0)
-                prev = info.get("previousClose") or cp
-                day_high = info.get("dayHigh") or cp
-                day_low = info.get("dayLow") or cp
-                sector = info.get("sector", "")
-                mkt_cap = info.get("marketCap")
-                fifty_two_high = info.get("fiftyTwoWeekHigh", cp)
-                fifty_two_low = info.get("fiftyTwoWeekLow", cp)
-                div_yield = info.get("dividendYield") or 0  # e.g. 0.022 → 2.2%
-                return ticker, {
-                    "current_price": round(float(cp), 2),
-                    "prev_close": round(float(prev), 2),
-                    "day_high": round(float(day_high), 2),
-                    "day_low": round(float(day_low), 2),
-                    "sector": sector,
-                    "market_cap": mkt_cap,
-                    "fifty_two_high": round(float(fifty_two_high), 2),
-                    "fifty_two_low": round(float(fifty_two_low), 2),
-                    "dividend_yield": round(float(div_yield), 4),
-                }
-            except Exception as exc:
-                logger.warning(f"PortfolioDetail: could not fetch {ticker}: {exc}")
-                return ticker, None
-
-        price_map = {}
-        if unique_tickers:
-            with ThreadPoolExecutor(max_workers=min(len(unique_tickers), 15)) as ex:
-                futures = {ex.submit(_fetch_price, t): t for t in unique_tickers}
-                try:
-                    for f in as_completed(futures, timeout=10):
-                        try:
-                            t, data = f.result()
-                            if data:
-                                price_map[t] = data
-                        except Exception:
-                            pass
-                except Exception:
-                    # TimeoutError is thrown by the generator if taking too long
-                    pass
-
-        # ── enrich holdings ────────────────────────────────────────────
-        def _risk_tag(ticker, live):
-            """Simple rule-based risk classification."""
-            if not live:
-                return "Unknown"
-            cp = live["current_price"]
-            low = live["fifty_two_low"]
-            high = live["fifty_two_high"]
-            if high == low or cp == 0:
-                return "Medium"
-            pos = (cp - low) / (high - low)
-            if pos < 0.30:
-                return "Low"
-            elif pos < 0.70:
-                return "Medium"
-            return "High"
-
-        total_invested = 0.0
-        total_current = 0.0
-        total_days_pnl = 0.0
-        total_est_dividends = 0.0
-        sectors_seen = {}
-
-        # Pre-fetch all required Stock and Sentiment objects in bulk
-        stock_map = {s.symbol: s for s in Stock.objects.filter(symbol__in=unique_tickers)}
-        sentiment_map = {}
-        for s in Sentiment.objects.filter(ticker__in=unique_tickers).order_by('ticker', '-fetched'):
-            if s.ticker not in sentiment_map:
-                sentiment_map[s.ticker] = s
-
-        enriched = []
-        for h in holdings:
-            live = price_map.get(h.ticker)
-            invested = h.quantity * float(h.buy_price)
-            cp = live["current_price"] if live else float(h.buy_price)
-            current_val = h.quantity * cp
-            pnl = current_val - invested
-            pnl_pct = (pnl / invested * 100) if invested > 0 else 0
-
-            prev = live["prev_close"] if live else cp
-            days_pnl = h.quantity * (cp - prev)
-
-            div_yield = live["dividend_yield"] if live else 0
-            est_div = current_val * div_yield
-
-            sector = (live["sector"] if live else "") or "Other"
-            sectors_seen[sector] = sectors_seen.get(sector, 0) + current_val
-
-            total_invested += invested
-            total_current += current_val
-            total_days_pnl += days_pnl
-            total_est_dividends += est_div
-
-            enriched.append({
-                "id": h.id,
-                "ticker": h.ticker,
-                "company_name": h.company_name,
-                "quantity": h.quantity,
-                "buy_price": float(h.buy_price),
-                "current_price": cp,
-                "invested": round(invested, 2),
-                "current_value": round(current_val, 2),
-                "pnl": round(pnl, 2),
-                "pnl_pct": round(pnl_pct, 2),
-                "days_pnl": round(days_pnl, 2),
-                "sector": sector,
-                "risk_tag": _risk_tag(h.ticker, live),
-                "buy_time": h.buy_time.isoformat(),
-                "day_high": live["day_high"] if live else None,
-                "day_low": live["day_low"] if live else None,
-                "fifty_two_high": live["fifty_two_high"] if live else None,
-                "fifty_two_low": live["fifty_two_low"] if live else None,
-                "estimated_annual_dividend": round(est_div, 2),
-            })
-
-        # ── diversification score (Herfindahl-based, 0–100) ───────────
-        if total_current > 0 and len(sectors_seen) > 0:
-            weights = [v / total_current for v in sectors_seen.values()]
-            hhi = sum(w ** 2 for w in weights)
-            diversification_score = round((1 - hhi) * 100, 1)
-        else:
-            diversification_score = 0.0
-
-        total_pnl = total_current - total_invested
-        total_return_pct = (total_pnl / total_invested * 100) if total_invested > 0 else 0
-
-        return Response({
-            "id": portfolio.id,
-            "name": portfolio.name,
-            "description": portfolio.description or "",
-            "created_at": portfolio.created_at.isoformat(),
-            "summary": {
-                "total_invested": round(total_invested, 2),
-                "current_value": round(total_current, 2),
-                "total_pnl": round(total_pnl, 2),
-                "total_return_pct": round(total_return_pct, 2),
-                "days_pnl": round(total_days_pnl, 2),
-                "diversification_score": diversification_score,
-                "estimated_annual_dividends": round(total_est_dividends, 2),
-                "num_holdings": len(holdings),
-                "sector_allocation": [
-                    {"sector": s, "value": round(v, 2),
-                     "weight_pct": round(v / total_current * 100, 1) if total_current > 0 else 0}
-                    for s, v in sectors_seen.items()
-                ],
-            },
-            "holdings": enriched,
-        })
-
-
-
-class AddHoldingView(APIView):
-    authentication_classes = [TokenAuthentication, SessionAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        user = get_user_from_request(request)
-        if not user:
-            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
-            
-        portfolio_id = request.data.get('portfolio_id')
-        portfolio = Portfolio.objects.filter(id=portfolio_id, user=user).first()
-        if not portfolio:
-            return Response({"error": "Portfolio not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        serializer = HoldingSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(portfolio=portfolio)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class DeleteHoldingView(APIView):
-    authentication_classes = [TokenAuthentication, SessionAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, id):
-        user = get_user_from_request(request)
-        if not user:
-            return Response({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
-            
-        holding = Holding.objects.filter(id=id, portfolio__user=user).first()
-        if not holding:
-            return Response({"error": "Holding not found or access denied"}, status=status.HTTP_404_NOT_FOUND)
-            
-        holding.delete()
-        return Response({"message": "Successfully deleted"}, status=status.HTTP_200_OK)
-
-
-class DeletePortfolioView(APIView):
-    authentication_classes = [TokenAuthentication, SessionAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def delete(self, request, id):
-        user = get_user_from_request(request)
-        if not user:
-            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
-
-        portfolio = Portfolio.objects.filter(id=id, user=user).first()
-        if not portfolio:
-            return Response({"error": "Portfolio not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        portfolio.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-class RenamePortfolioView(APIView):
-    authentication_classes = [TokenAuthentication, SessionAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def patch(self, request, id):
-        user = get_user_from_request(request)
-        if not user:
-            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
-
-        portfolio = Portfolio.objects.filter(id=id, user=user).first()
-        if not portfolio:
-            return Response({"error": "Portfolio not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        updated = False
-        if "name" in request.data:
-            new_name = (request.data.get("name") or "").strip()
-            if not new_name:
-                return Response({"error": "Name is required"}, status=status.HTTP_400_BAD_REQUEST)
-            portfolio.name = new_name
-            updated = True
-        if "description" in request.data:
-            portfolio.description = (request.data.get("description") or "").strip()
-            updated = True
-        if not updated:
-            return Response({"error": "No updates provided"}, status=status.HTTP_400_BAD_REQUEST)
-
-        portfolio.save()
-        serializer = PortfolioSerializer(portfolio)
-        return Response(serializer.data)
-
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def evaluate_predictions(request):
@@ -3182,7 +2817,7 @@ def register_user(request):
         logger.error("register_user error: %s", exc)
         return Response({'error': 'Could not create account. Please try again.'}, status=500)
 
-    return Response({'message': 'Account created.'}, status=201)
+    return Response({'message': 'Account created.', 'email': email}, status=201)
 
 
 class UpdateProfileView(APIView):
@@ -3307,20 +2942,33 @@ class PortfolioDetailView(APIView):
             for row in sentiment_data:
                 sentiment_cache[row['ticker']] = row['avg_score']
 
+        # 3. Fetch fallbacks from DB
+        from .models import Stock
+        db_stocks = {s.symbol: s for s in Stock.objects.filter(symbol__in=tickers_needed)}
+
         for h in holdings:
             info = live_cache.get(h.ticker, {})
+            db_stock = db_stocks.get(h.ticker)
+            
+            # Prefer info, then db, then buy_price
             current_price = float(
-                info.get('currentPrice') or
-                info.get('regularMarketPrice') or
-                info.get('previousClose') or
+                info.get('currentPrice') or 
+                info.get('regularMarketPrice') or 
+                (float(db_stock.current_price) if db_stock and db_stock.current_price else None) or
+                info.get('previousClose') or 
                 h.buy_price
             )
-            prev_close = float(info.get('previousClose') or current_price)
-            day_high = info.get('dayHigh')
-            day_low = info.get('dayLow')
-            high52 = info.get('fiftyTwoWeekHigh')
-            low52 = info.get('fiftyTwoWeekLow')
-            sector = info.get('sector') or 'Unknown'
+            prev_close = float(
+                info.get('previousClose') or 
+                (float(db_stock.previous_close) if db_stock and db_stock.previous_close else None) or
+                current_price
+            )
+            day_high = info.get('dayHigh') or (float(db_stock.fifty_two_week_high) if db_stock and db_stock.fifty_two_week_high else None)
+            day_low = info.get('dayLow') or (float(db_stock.fifty_two_week_low) if db_stock and db_stock.fifty_two_week_low else None)
+            high52 = info.get('fiftyTwoWeekHigh') or (float(db_stock.fifty_two_week_high) if db_stock and db_stock.fifty_two_week_high else None)
+            low52 = info.get('fiftyTwoWeekLow') or (float(db_stock.fifty_two_week_low) if db_stock and db_stock.fifty_two_week_low else None)
+            
+            sector = info.get('sector') or (db_stock.sector if db_stock else 'Unknown') or 'Unknown'
             div_yield = float(info.get('dividendYield') or 0)
 
             invested = h.buy_price * h.quantity
@@ -3484,6 +3132,34 @@ class AddHoldingView(APIView):
             return Response({'error': 'quantity must be greater than 0.'}, status=400)
         if buy_price <= 0:
             return Response({'error': 'buy_price must be greater than 0.'}, status=400)
+
+        # ── (NEW) Auto-fetch company info if names are missing or basic ────
+        import yfinance as yf
+        from .models import Stock, StockCategory
+        try:
+            # Ensure a default category exists
+            cat_obj, _ = StockCategory.objects.get_or_create(name="General Equity", defaults={'slug': 'general-equity'})
+            
+            # Check if stock object exists
+            stock_obj, created = Stock.objects.get_or_create(
+                symbol=ticker, 
+                defaults={'category': cat_obj, 'name': company_name}
+            )
+            
+            # If created or basic name, try to fetch enriched info
+            if created or company_name == ticker:
+                info = yf.Ticker(ticker).info or {}
+                fetched_name = info.get("longName") or info.get("shortName")
+                if fetched_name:
+                    company_name = fetched_name
+                
+                # Update Stock object while we are at it
+                stock_obj.name = fetched_name or company_name
+                stock_obj.sector = info.get("sector", "Other")
+                stock_obj.current_price = info.get("currentPrice") or info.get("regularMarketPrice") or buy_price
+                stock_obj.save()
+        except Exception as exc:
+            logger.warning("AddHoldingView: could not enrich %s: %s", ticker, exc)
 
         holding = Holding.objects.create(
             portfolio=portfolio,
@@ -3658,6 +3334,118 @@ def verify_recovery(request):
     
     return Response({'recovery_token': token})
 
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def request_otp(request):
+    """
+    POST /api/request-otp/
+    Body: { "email": "..." }
+    """
+    from django.contrib.auth import get_user_model
+    from django.db.models import Q
+    from django.utils import timezone
+    from django.contrib.auth.hashers import make_password
+    import secrets
+    import string
+    import requests
+    from django.conf import settings
+    import os
+    
+    _User = get_user_model()
+    email = request.data.get('email', '').strip().lower()
+    user = _User.objects.filter(Q(email__iexact=email) | Q(username__iexact=email)).first()
+    
+    if not user:
+        return Response({'error': 'User not found.'}, status=404)
+        
+    profile = getattr(user, 'security_profile', None)
+    if not profile or not profile.telegram_id:
+        return Response({'error': 'No Telegram account linked to this user.'}, status=400)
+        
+    now = timezone.now()
+    # Rate Limiting: Max 3 requests per 5 minutes
+    if profile.last_otp_requested_at and (now - profile.last_otp_requested_at).total_seconds() < 300:
+        if profile.otp_attempts >= 3:
+            return Response({'error': 'Too many OTP requests. Please wait 5 minutes.'}, status=429)
+        profile.otp_attempts += 1
+    else:
+        profile.otp_attempts = 1
+        
+    profile.last_otp_requested_at = now
+    
+    # Generate 6-digit OTP
+    otp = ''.join(secrets.choice(string.digits) for i in range(6))
+    profile.otp_hash = make_password(otp)
+    profile.otp_expiry = now + timezone.timedelta(minutes=5)
+    profile.save()
+    
+    # Send via Telegram
+    bot_token = os.environ.get('TELEGRAM_BOT_TOKEN', getattr(settings, 'TELEGRAM_BOT_TOKEN', ''))
+    if bot_token:
+        try:
+            message = f"🔒 StockCompass: Your OTP for password reset is {otp}. This code is valid for 5 minutes and is intended for single-use only. Do not share this with anyone."
+            url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+            requests.post(url, json={"chat_id": profile.telegram_id, "text": message}, timeout=5)
+        except Exception as e:
+            # Optionally log exception
+            return Response({'error': 'Failed to send Telegram message.'}, status=500)
+        return Response({'message': 'OTP sent to your registered Telegram account.'})
+    else:
+        # Dev fallback: missing token
+        print(f"\n[DEV MODE] 🔔 TELEGRAM OTP TRIGGERED 🔔\nTo: {email} (Chat ID {profile.telegram_id})\nCode: {otp}\n")
+        return Response({'message': 'OTP sent! (Check your backend terminal for the code)'})
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def verify_otp(request):
+    """
+    POST /api/verify-otp/
+    Body: { "email": "...", "otp": "..." }
+    """
+    from django.contrib.auth import get_user_model
+    from django.db.models import Q
+    from django.utils import timezone
+    from django.contrib.auth.hashers import check_password
+    from django.core.cache import cache
+    import secrets
+    _User = get_user_model()
+    
+    email = request.data.get('email', '').strip().lower()
+    otp = request.data.get('otp', '').strip()
+    
+    user = _User.objects.filter(Q(email__iexact=email) | Q(username__iexact=email)).first()
+    if not user:
+        return Response({'error': 'User not found.'}, status=404)
+        
+    profile = getattr(user, 'security_profile', None)
+    if not profile or not profile.otp_hash:
+        return Response({'error': 'No OTP requested.'}, status=400)
+        
+    now = timezone.now()
+    if profile.otp_expiry and now > profile.otp_expiry:
+        return Response({'error': 'OTP has expired. Please request a new one.'}, status=400)
+        
+    # We can also handle verify attempts strictly, e.g. cache counter out of bounds, but requirements specify "max 5 attempts"
+    verify_attempts_key = f"otp_verify_{user.pk}"
+    attempts = cache.get(verify_attempts_key, 0)
+    if attempts >= 5:
+        return Response({'error': 'Too many invalid attempts. Please request a new OTP.'}, status=429)
+        
+    if not check_password(otp, profile.otp_hash):
+        cache.set(verify_attempts_key, attempts + 1, 300)
+        return Response({'error': f'Invalid OTP. {4 - attempts} attempts remaining.'}, status=400)
+        
+    # Success, reset attempts & discard OTP
+    cache.delete(verify_attempts_key)
+    profile.otp_hash = ''
+    profile.save()
+    
+    token = secrets.token_hex(16)
+    cache.set(f"pwd_reset_{token}", user.pk, 600)  # valid for 10 mins
+    return Response({'recovery_token': token})
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def reset_password(request):
@@ -3688,6 +3476,104 @@ def reset_password(request):
     cache.delete(f"pwd_reset_{token}")
     
     return Response({'message': 'Password reset successful.'})
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def telegram_webhook(request):
+    """
+    POST /api/telegram-webhook/
+    Receives Telegram bot updates.
+    When user sends: /start user@example.com
+    → look up user by email → store chat_id in their profile.
+    """
+    import requests as _req
+    from django.conf import settings
+    from django.contrib.auth import get_user_model
+    _User = get_user_model()
+
+    update = request.data  # Telegram sends JSON
+    message = update.get('message', {})
+    text = (message.get('text') or '').strip()
+    chat = message.get('chat', {})
+    chat_id = str(chat.get('id', ''))
+    first_name = chat.get('first_name', 'User')
+
+    if not text.startswith('/start'):
+        return Response({'ok': True})
+
+    parts = text.split(maxsplit=1)
+    if len(parts) < 2:
+        # No email provided — just greet
+        _send_telegram_message(chat_id, (
+            "👋 Welcome to StockCompass Bot!\n\n"
+            "To link your account, send:\n"
+            "/start your@email.com"
+        ))
+        return Response({'ok': True})
+
+    email = parts[1].strip().lower()
+    user = _User.objects.filter(email__iexact=email).first()
+    if not user:
+        _send_telegram_message(chat_id, f"❌ No account found for {email}. Please check your email and try again.")
+        return Response({'ok': True})
+
+    profile, _ = UserSecurityProfile.objects.get_or_create(user=user)
+    profile.telegram_id = chat_id
+    profile.save()
+
+    _send_telegram_message(chat_id, (
+        f"✅ Hey {first_name}! Your Telegram account has been successfully linked to StockCompass.\n\n"
+        "You can now use Telegram OTP for password recovery. 🔐"
+    ))
+    logger.info("Telegram linked: user=%s chat_id=%s", email, chat_id)
+    return Response({'ok': True})
+
+
+def _send_telegram_message(chat_id: str, text: str) -> bool:
+    """Helper to send a Telegram message. Returns True on success."""
+    import requests as _req
+    from django.conf import settings
+    token = getattr(settings, 'TELEGRAM_BOT_TOKEN', None)
+    if not token:
+        logger.warning("TELEGRAM_BOT_TOKEN not set — cannot send message to chat_id=%s", chat_id)
+        return False
+    try:
+        resp = _req.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
+            timeout=8,
+        )
+        return resp.status_code == 200
+    except Exception as exc:
+        logger.error("Telegram send error: %s", exc)
+        return False
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def check_telegram_link(request):
+    """
+    POST /api/check-telegram-link/
+    Body: { "email": "user@example.com" }
+    Returns: { "linked": true/false }
+    Used by the frontend to poll after the user sends the /start command.
+    """
+    from django.contrib.auth import get_user_model
+    _User = get_user_model()
+
+    email = (request.data.get('email') or '').strip().lower()
+    if not email:
+        return Response({'error': 'Email is required.'}, status=400)
+
+    user = _User.objects.filter(email__iexact=email).first()
+    if not user:
+        return Response({'error': 'User not found.'}, status=404)
+
+    profile = UserSecurityProfile.objects.filter(user=user).first()
+    linked = bool(profile and profile.telegram_id)
+    return Response({'linked': linked, 'email': email})
+
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
