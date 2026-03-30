@@ -600,7 +600,19 @@ export async function fetchStockSentiment(ticker: string): Promise<StockSentimen
       const detail = await res.json().catch(() => ({}));
       return { ticker, fetching: false, error: detail.error || `API error ${res.status}` };
     }
-    return await res.json();
+    const data = await res.json();
+    return {
+      ticker: data.ticker,
+      fetching: data.fetching,
+      message: data.message,
+      sentiment_score: data.avg_score,
+      sentiment_label: data.label,
+      news: data.articles?.map((art: any) => ({
+        ...art,
+        sentiment_score: art.compound_score,
+        sentiment_label: art.label,
+      })) || [],
+    };
   } catch (err) {
     return { ticker, fetching: false, error: err instanceof Error ? err.message : 'Unknown error fetching sentiment' };
   }

@@ -14,14 +14,66 @@ import {
   MessageCircle,
   KeyRound,
   ExternalLink,
+  Compass,
+  ChevronLeft,
+  Home
 } from "lucide-react";
 import { API_BASE } from "@/lib/api-base";
+import { motion } from "framer-motion";
 
 const inputClass =
-  "w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-slate-500 shadow-inner transition focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/35";
+  "w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3.5 text-xs text-white placeholder:text-slate-500 shadow-inner transition focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/35";
 
 const labelClass =
-  "text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 block";
+  "text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 block";
+
+// The animated digital compass + world map radar background for the left pane
+function AuthRadarMap() {
+  return (
+    <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden bg-[#070a12]">
+      {/* ── World Map Background ── */}
+      <div 
+        className="absolute inset-0 bg-gradient-to-tr from-indigo-500/30 via-blue-500/10 to-transparent"
+        style={{
+          maskImage: "url('/world-map.svg')",
+          maskSize: "cover", 
+          maskPosition: "center",
+          maskRepeat: "no-repeat",
+          WebkitMaskImage: "url('/world-map.svg')",
+          WebkitMaskSize: "cover",
+          WebkitMaskPosition: "center",
+          WebkitMaskRepeat: "no-repeat",
+        }}
+      />
+      <div className="absolute inset-0 z-[1] bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[length:64px_64px] mix-blend-overlay" />
+      <div className="absolute h-96 w-96 rounded-full bg-indigo-600/10 blur-[100px]" />
+
+      {/* ── Animated Digital Compass ── */}
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ repeat: Infinity, duration: 60, ease: "linear" }}
+        className="relative z-[2] flex h-[1200px] w-[1200px] items-center justify-center opacity-60"
+      >
+        <div className="absolute h-[1000px] w-[1000px] rounded-full border border-dashed border-indigo-400/10" />
+        <div className="absolute h-[800px] w-[800px] rounded-full border border-indigo-500/20" />
+        <div className="absolute h-[500px] w-[500px] rounded-full border-[1.5px] border-dotted border-indigo-300/30" />
+        <div className="absolute h-full w-[1px] bg-gradient-to-b from-transparent via-indigo-500/20 to-transparent" />
+        <div className="absolute h-[1px] w-full bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent" />
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 12, ease: "linear" }}
+          className="absolute left-1/2 top-1/2 h-[500px] w-[500px] origin-top-left"
+        >
+          <div className="h-full w-[2px] bg-gradient-to-b from-indigo-400/80 to-transparent shadow-[0_0_20px_rgba(99,102,241,1)]" />
+          <div 
+            className="absolute left-0 top-0 h-full w-full bg-gradient-to-br from-indigo-500/10 to-transparent" 
+            style={{ clipPath: "polygon(0 0, 100% 0, 0 100%)" }} 
+          />
+        </motion.div>
+      </motion.div>
+    </div>
+  );
+}
 
 // Steps: 1=Email, 2=ChooseMethod, 3=Verify (question or OTP), 4=NewPassword, 5=Success
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -193,37 +245,80 @@ export default function ForgotPasswordContent() {
 
   /* ─────────────────────────────── Render ─────────────────────────────── */
   return (
-    <div className="landing-page relative min-h-screen flex flex-col items-center justify-center bg-[#070a12] p-6 font-body text-white">
-      {/* Background Decor */}
-      <div
-        className="pointer-events-none fixed inset-0 z-0 opacity-[0.3]"
-        style={{
-          background:
-            "radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.2), transparent), radial-gradient(ellipse 50% 30% at 0% 100%, rgba(99, 102, 241, 0.05), transparent)",
-        }}
-      />
-      <div className="pointer-events-none fixed inset-0 z-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[length:48px_48px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_0%,#000_30%,transparent_100%)] opacity-40" />
-
-      <div className="relative z-10 mb-8 text-center">
-        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-500 p-px shadow-lg shadow-indigo-500/20">
-          <div className="flex h-full w-full items-center justify-center rounded-[15px] bg-[#070a12]">
-            <ShieldQuestion className="h-7 w-7 text-indigo-400" strokeWidth={2.5} />
-          </div>
+    <div className="flex h-screen w-full overflow-hidden bg-[#070a12] text-white font-body selection:bg-indigo-500/30 selection:text-indigo-200">
+      
+      {/* ── LEFT PANE: 65% Global Intelligence Radar ── */}
+      <div className="relative hidden lg:flex lg:w-[65%] border-r border-white/5">
+        <AuthRadarMap />
+        
+        {/* Top Left Branding Overlay */}
+        <div className="absolute left-10 top-10 z-10">
+          <Link href="/" className="inline-flex items-center gap-3 transition-opacity hover:opacity-80">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-blue-700 shadow-lg shadow-indigo-500/25">
+              <Compass className="h-5 w-5 text-white" strokeWidth={2.5} />
+            </div>
+            <span className="font-display text-xl font-bold tracking-tight text-white drop-shadow-md">
+              StockCompass<span className="text-indigo-400"> AI</span>
+            </span>
+          </Link>
         </div>
-        <h1 className="font-display text-3xl font-bold tracking-tight text-white mb-2">
-          Account Recovery
-        </h1>
-        {step !== 5 && (
-          <p className="text-sm text-slate-400">
-            Regain access to your StockCompass account
+
+        {/* Bottom Left System Readout Overlay */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.6, ease: "easeOut" }}
+          className="absolute bottom-10 left-10 z-10 flex flex-col gap-1.5 backdrop-blur-md bg-black/40 p-5 rounded-2xl border border-white/5"
+        >
+          <p className="font-mono text-[10px] uppercase tracking-widest text-indigo-400">Recovery Protocol Active</p>
+          <h3 className="font-display tracking-tight text-white font-semibold text-xl max-w-[400px] mt-1">
+            Engineering Alpha. Built on Trust.
+          </h3>
+          <p className="text-sm text-slate-400 max-w-[380px] mt-1 leading-relaxed">
+             Secure access restoration pathway engaged and monitored.
           </p>
-        )}
+          <div className="mt-3 flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400/60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
+            </span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-slate-400">Identity Verification Live</span>
+          </div>
+        </motion.div>
       </div>
 
-      <div className="relative z-10 w-full max-w-[420px] rounded-[28px] border border-white/[0.08] bg-[#0c101c]/90 p-6 shadow-2xl backdrop-blur-xl sm:p-8">
+      {/* ── RIGHT PANE: 35% Auth Form ── */}
+      <div className="relative flex w-full lg:w-[35%] min-w-[360px] lg:max-w-none flex-col overflow-y-auto overflow-x-hidden bg-[#0a0d17]">
+        
+        {/* Mobile Branding (only shows on mobile) */}
+        <div className="lg:hidden w-full p-6 pb-0 flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-blue-700">
+            <Compass className="h-4 w-4 text-white" />
+          </div>
+          <span className="font-display text-lg font-bold tracking-tight text-white">StockCompass</span>
+        </div>
+
+        <div className="flex-1 flex flex-col justify-center px-8 xl:px-12 py-10 my-auto">
+          
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="mb-8"
+          >
+            <h2 className="text-2xl font-display font-bold text-white mb-2 tracking-tight">
+              Account Recovery
+            </h2>
+            {step !== 5 && (
+              <p className="text-xs text-slate-400 font-medium">
+                Regain access to your institutional workspace.
+              </p>
+            )}
+          </motion.div>
+
         {/* Error banner ─ special handling for telegram_not_linked */}
         {error && error !== "telegram_not_linked" && (
-          <div className="mb-6 flex items-center gap-3 rounded-xl bg-rose-500/10 p-3 text-sm font-medium text-rose-400 border border-rose-500/20">
+          <div className="mb-6 flex items-center gap-3 rounded-xl bg-rose-500/10 p-3 text-[11px] font-medium text-rose-400 border border-rose-500/20">
             <AlertCircle className="h-5 w-5 shrink-0" />
             <p>{error}</p>
           </div>
@@ -231,25 +326,30 @@ export default function ForgotPasswordContent() {
 
         {/* Success banner */}
         {successMsg && !error && (
-          <div className="mb-6 flex items-center gap-3 rounded-xl bg-emerald-500/10 p-3 text-sm font-medium text-emerald-400 border border-emerald-500/20">
+          <div className="mb-6 flex items-center gap-3 rounded-xl bg-emerald-500/10 p-3 text-[11px] font-medium text-emerald-400 border border-emerald-500/20">
             <CheckCircle2 className="h-5 w-5 shrink-0" />
             <p>{successMsg}</p>
           </div>
         )}
 
+        <motion.div
+           initial={{ opacity: 0, x: 20 }}
+           animate={{ opacity: 1, x: 0 }}
+           transition={{ duration: 0.6, delay: 0.4 }}
+        >
         {/* ── Step 1: Email entry ── */}
         {step === 1 && (
-          <form onSubmit={handleIdentify} className="space-y-5">
-            <p className="text-sm text-slate-300 mb-4">
-              Enter your registered email address to begin account recovery.
+          <form onSubmit={handleIdentify} className="space-y-4">
+            <p className="text-[11px] text-slate-400 mb-4 leading-relaxed">
+              Enter your registered organization email address to initiate the core system retrieval protocol.
             </p>
             <div className="space-y-1.5">
               <label className={labelClass}>Email Address</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
                 <input
                   type="email"
-                  placeholder="name@example.com"
+                  placeholder="name@organization.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className={`${inputClass} !pl-10`}
@@ -260,16 +360,19 @@ export default function ForgotPasswordContent() {
             <button
               type="submit"
               disabled={loading || !email}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-600/25 transition hover:shadow-indigo-500/35 active:scale-[0.98] disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 py-3.5 text-xs font-bold text-white shadow-[0_0_20px_rgba(99,102,241,0.25)] transition hover:shadow-[0_0_30px_rgba(99,102,241,0.4)] active:scale-[0.98] disabled:opacity-50 mt-2"
             >
               {loading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  Continue <ArrowRight className="h-4 w-4" />
+                  Engage Retrieval <ArrowRight className="h-3.5 w-3.5" />
                 </>
               )}
             </button>
+            <div className="mt-4 text-center text-[10px] text-slate-500 font-medium">
+              Demo Recovery Account: <span className="text-slate-400 font-bold underline decoration-indigo-500/30 underline-offset-4">demo@example.com</span>
+            </div>
           </form>
         )}
 
@@ -411,18 +514,18 @@ export default function ForgotPasswordContent() {
               </p>
             </div>
             <div className="space-y-1.5">
-              <label className={labelClass}>6-Digit OTP</label>
+              <label className={labelClass}>6-Digit Neural OTP</label>
               <div className="relative">
-                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
                 <input
                   type="text"
-                  placeholder="000000"
+                  placeholder="000 000"
                   maxLength={6}
                   value={otp}
                   onChange={(e) =>
                     setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
                   }
-                  className={`${inputClass} !pl-10 tracking-[0.3em] font-mono text-center text-lg`}
+                  className={`${inputClass} !pl-10 tracking-[0.4em] font-mono text-center text-lg`}
                   required
                 />
               </div>
@@ -430,7 +533,7 @@ export default function ForgotPasswordContent() {
             <button
               type="submit"
               disabled={loading || otp.length < 6}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-600/25 transition hover:shadow-indigo-500/35 active:scale-[0.98] disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 py-3.5 text-xs font-bold text-white shadow-[0_0_20px_rgba(99,102,241,0.25)] transition hover:shadow-[0_0_30px_rgba(99,102,241,0.4)] active:scale-[0.98] disabled:opacity-50 mt-2"
             >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -512,27 +615,28 @@ export default function ForgotPasswordContent() {
 
         {/* ── Navigation footer ── */}
         {step < 5 && (
-          <div className="mt-8 flex justify-center items-center gap-4">
+          <div className="mt-10">
             {step > 1 && (
               <button
                 onClick={goBack}
-                className="text-xs font-semibold text-slate-500 hover:text-white transition"
+                className="inline-flex items-center gap-1.5 text-slate-500 hover:text-indigo-400 transition text-[11px] font-bold tracking-wider uppercase mb-3 text-left w-full"
               >
-                Back
+                <ChevronLeft className="h-4 w-4" />
+                Rewind Protocol
               </button>
-            )}
-            {step > 1 && (
-              <span className="text-slate-700 text-xs">•</span>
             )}
             <Link
               href="/login"
-              className="text-xs font-semibold text-slate-500 hover:text-white transition"
+              className="inline-flex items-center gap-1.5 text-slate-500 hover:text-indigo-400 transition text-[11px] font-bold tracking-wider uppercase"
             >
-              Return to Sign in
+              <Home className="h-3.5 w-3.5" />
+              Return to Sign In Hub
             </Link>
           </div>
         )}
+        </motion.div>
       </div>
+     </div>
     </div>
   );
 }

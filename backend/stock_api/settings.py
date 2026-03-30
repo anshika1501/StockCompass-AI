@@ -189,6 +189,7 @@ CORS_ALLOWED_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    
 ]
 
 # ── Third-party integrations ──────────────────────────────────────────────────
