@@ -35,10 +35,10 @@ jobs:
             if [ ! -d "venv" ]; then
               python3 -m venv venv
             fi
-
-            ./venv/bin/pip install -r requirements.txt
-            ./venv/bin/python manage.py migrate
-            ./venv/bin/python manage.py init_stocks --update-prices --period 1mo
+            source venv/bin/activate
+            pip install -r requirements.txt
+            python manage.py migrate
+            # python manage.py init_stocks --update-prices --period 1mo # only for first time
             pm2 delete StockCompass-AI-backend || echo "backend not found"
             pm2 start "python manage.py runserver 0.0.0.0:8002" --name StockCompass-AI-backend
 
