@@ -51,7 +51,7 @@ def _detect_portfolio_action(question: str) -> Optional[Dict[str, Any]]:
 
     # Create portfolio
     m = re.search(
-        r"\b(create|make|open)\s+(?:a\s+)?portfolio(?:\s+(?:named|called)\s+(?P<name>[A-Za-z0-9 _\-]{2,60}))?",
+        r"\b(create|make|open|add)\s+(?:a\s+)?(?:new\s+)?portfolio(?:\s+(?:named|called)\s+(?P<name>[A-Za-z0-9 _\-]{2,60}))?",
         q,
         flags=re.IGNORECASE,
     )
@@ -248,9 +248,9 @@ def _execute_portfolio_action(action: Dict[str, Any], request):
                 )
 
         try:
-            qty = int(float(qty_raw)) if qty_raw is not None else None
+            qty = int(float(qty_raw)) if qty_raw is not None else 1
         except (TypeError, ValueError):
-            qty = None
+            qty = 1
 
         try:
             price = float(price_raw) if price_raw is not None else None
