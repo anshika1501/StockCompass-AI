@@ -76,7 +76,7 @@ On the sign-in page:
 • **Dashboard** → sector hub (**/portfolios**) — browse sectors and stocks.
 • **My Portfolio** → **/my-portfolio** — your personal portfolios and holdings.
 • **Markets** — Sectors, Nifty 50, Gold/Silver, Compare assets.
-• **AI Tools** — PCA, Sentiment, Stock prediction, full **Chatbot** page.`,
+• **AI Tools** — PCA, Sentiment, Stock prediction, full **Stocky** page.`,
   },
   {
     id: "sectors",
@@ -170,7 +170,7 @@ Amounts are shown in **INR (₹)** where applicable.`,
     ],
     body: `The **floating blue chat** (when you’re not on the home page) answers **how to use StockCompass**—navigation, portfolios, auth, and settings.
 
-For **stock-level research** with retrieval over your data, use **AI Tools → Chatbot** (**/chatbot**) and the **Stock research** mode there (requires backend / models as configured).
+For **stock-level research** with retrieval over your data, use **AI Tools → Stocky** (**/chatbot**) and the **Stock research** mode there (requires backend / models as configured).
 
 This quick help does **not** place trades or access your brokerage.`,
   },

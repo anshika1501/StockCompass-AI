@@ -48,7 +48,6 @@ export default function ChatbotPage() {
   const [error, setError] = useState<string | null>(null);
   const [models, setModels] = useState<LlmModel[]>([]);
   const [model, setModel] = useState<string>("");
-  const [embedModel, setEmbedModel] = useState<string>("qwen3-embedding:0.6b");
   const [baseUrl, setBaseUrl] = useState<string>("");
   const [modelLoading, setModelLoading] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
@@ -88,7 +87,7 @@ export default function ChatbotPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await chatWithStocks(query.trim(), model || undefined, embedModel || undefined, baseUrl || undefined);
+      const res = await chatWithStocks(query.trim(), model || undefined, baseUrl || undefined);
       setAnswer(res);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Something went wrong");
@@ -105,11 +104,11 @@ export default function ChatbotPage() {
           <CardHeader className="space-y-2">
             <div className="flex items-center gap-2 text-slate-700">
               <MessageCircle className="h-5 w-5 text-blue-500" />
-              <CardTitle className="text-xl">Finance Assistant</CardTitle>
+              <CardTitle className="text-xl">Stocky</CardTitle>
             </div>
             <p className="text-sm text-slate-500">
               <strong>Product help</strong> answers how to use the app. <strong>Stock research</strong> uses your
-              backend (pgvector + LLM) for market-style questions.
+              backend database + LLM for market-style questions.
             </p>
           </CardHeader>
           <CardContent>
@@ -176,7 +175,7 @@ export default function ChatbotPage() {
                   </Button>
 
                   {showAdvancedSettings && (
-                    <div className="grid gap-3 rounded-lg border bg-slate-50/50 p-4 md:grid-cols-3">
+                    <div className="grid gap-3 rounded-lg border bg-slate-50/50 p-4 md:grid-cols-2">
                       <div className="flex flex-col gap-1">
                         <label className="text-xs font-semibold text-slate-600">Chat model (Ollama)</label>
                         <Select value={model} onValueChange={setModel} disabled={modelLoading || models.length === 0}>
@@ -191,14 +190,6 @@ export default function ChatbotPage() {
                             ))}
                           </SelectContent>
                         </Select>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs font-semibold text-slate-600">Embed model</label>
-                        <Input
-                          value={embedModel}
-                          onChange={(e) => setEmbedModel(e.target.value)}
-                          placeholder="nomic-embed-text"
-                        />
                       </div>
                       <div className="flex flex-col gap-1">
                         <label className="text-xs font-semibold text-slate-600">Ollama base URL</label>

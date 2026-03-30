@@ -1,55 +1,59 @@
-# name: Deploy Stock Project
+name: Deploy Stock Project
 
-# on:
-#   push:
-#     branches:
-#       - main
+on:
+  push:
+    branches:
+      - main
 
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
+jobs:
+  deploy:
+    if: contains(github.event.head_commit.message, 'Release') || contains(github.event.head_commit.message, 'Repelase')
+    runs-on: ubuntu-latest
 
-#     steps:
-#       - name: Deploy via SSH
-#         uses: appleboy/ssh-action@v1.0.3
-#         with:
-#           host: ${{ secrets.HOST }}
-#           username: ${{ secrets.USERNAME }}
-#           key: ${{ secrets.SSH_KEY }}
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
 
-#           script: |
-#             echo "Loading Node..."
-#             export NVM_DIR="$HOME/.nvm"
-#             source $NVM_DIR/nvm.sh
+          script: |
+            echo "Loading Node..."
+            export NVM_DIR="$HOME/.nvm"
+            source $NVM_DIR/nvm.sh
 
-#             echo "Go to project"
-#             cd /home/anshu/dockers/Stock-3.0 || exit 1
+            echo "Go to project"
+            cd /home/anshu/dockers/StockCompass-AI || exit 1
 
-#             echo "Pull latest code"
-#             git pull origin main
+            echo "Pull latest code"
+            git pull origin main
 
-#             echo "Backend update"
-#             cd backend
+            echo "Backend update"
+            cd backend
 
-#             if [ ! -d "venv" ]; then
-#               python3 -m venv venv
-#             fi
+            if [ ! -d "venv" ]; then
+              python3 -m venv venv
+            fi
 
-#             ./venv/bin/pip install -r requirements.txt
-#             ./venv/bin/python manage.py migrate
+            ./venv/bin/pip install -r requirements.txt
+            ./venv/bin/python manage.py migrate
+            ./venv/bin/python manage.py init_stocks --update-prices --period 1mo
+            pm2 delete StockCompass-AI-backend || echo "backend not found"
+            pm2 start "python manage.py runserver 0.0.0.0:8002" --name StockCompass-AI-backend
 
-#             cd ..
+            cd ..
 
-#             echo "Frontend update"
-#             cd frontend
+            echo "Frontend update"
+            cd frontend
 
-#             npm install
-#             npm run build
+            npm install
+            npm run build
+            pm2 delete StockCompass-AI-frontend || echo "frontend not found"
+            pm2 start npm --name StockCompass-AI-frontend -- run start
 
-#             cd ..
+            echo "Saving PM2 Process"
+            cd $HOME/scripts
+            ./pm2-autostart.sh
 
-#             echo "Restart PM2"
-#             pm2 restart stock-backend || echo "backend not found"
-#             pm2 restart stock-frontend || echo "frontend not found"
-
-#             echo "Done"
+            echo "Done"

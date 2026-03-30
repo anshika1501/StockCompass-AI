@@ -176,7 +176,7 @@ export default function ChatFab() {
             </div>
           </form>
           <p className="mt-4 text-center text-[11px] font-bold uppercase tracking-tight text-gray-400">
-            Help answers are from product docs, not live market data. For stock Q&amp;A use Chatbot (AI Tools).
+            Help answers are from product docs, not live market data. For stock Q&amp;A use Stocky (AI Tools).
           </p>
         </div>
       </div>

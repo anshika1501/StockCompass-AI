@@ -501,11 +501,11 @@ function getChatAuthHeaders(): Record<string, string> {
   return token ? { Authorization: `Token ${token}` } : {};
 }
 
-export async function chatWithStocks(query: string, model?: string, embedModel?: string, baseUrl?: string): Promise<ChatResponse> {
+export async function chatWithStocks(query: string, model?: string, baseUrl?: string): Promise<ChatResponse> {
   const res = await fetch(`${API_BASE}/chatbot/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getChatAuthHeaders() },
-    body: JSON.stringify({ query, model, embed_model: embedModel, base_url: baseUrl }),
+    body: JSON.stringify({ query, model, base_url: baseUrl }),
     cache: 'no-store',
   });
   if (!res.ok) {
