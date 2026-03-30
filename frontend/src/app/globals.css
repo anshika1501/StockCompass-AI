@@ -84,3 +84,81 @@
     @apply text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500;
   }
 }
+
+/* ─── Cinematic Keyframes ───────────────────────────── */
+
+/* Shimmer sweep */
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Slow upward drift for floating elements */
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-14px); }
+}
+
+/* Scan line sweep — for terminal effect */
+@keyframes scan {
+  0%   { top: -4px; opacity: 0.4; }
+  80%  { opacity: 0.2; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* Ambient pulse glow for positive indicators */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(52,211,153,0.3); }
+  50%       { box-shadow: 0 0 28px rgba(52,211,153,0.6); }
+}
+
+/* Text blink for LIVE indicators */
+@keyframes terminal-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* Terminal cursor */
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  49%       { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* Utility classes */
+.animate-float-slow {
+  animation: float-slow 8s ease-in-out infinite;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2.5s ease-in-out infinite;
+}
+
+.animate-cursor {
+  animation: cursor-blink 1s step-end infinite;
+}
+
+.terminal-scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(99,102,241,0.3), transparent);
+  animation: scan 3s linear infinite;
+  pointer-events: none;
+}
+
+/* Glass card reflection */
+.glass-reflect {
+  background: linear-gradient(
+    135deg,
+    rgba(255,255,255,0.06) 0%,
+    rgba(255,255,255,0.02) 30%,
+    transparent 60%
+  );
+}
+
+/* Depth glow variants */
+.glow-indigo { box-shadow: 0 0 32px rgba(99,102,241,0.25); }
+.glow-emerald { box-shadow: 0 0 32px rgba(52,211,153,0.25); }
+

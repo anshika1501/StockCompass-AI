@@ -1,193 +1,178 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useState } from "react";
-import { ArrowUpRight, BarChart2, TrendingUp, AlertTriangle } from "lucide-react";
+import { TrendingUp, Activity, Target, Zap } from "lucide-react";
 
-const mockData = [
-  { day: '1', value: 10000.00 },
-  { day: '2', value: 10125.40 },
-  { day: '3', value: 10050.20 },
-  { day: '4', value: 10210.85 },
-  { day: '5', value: 10180.15 },
-  { day: '6', value: 10350.60 },
-  { day: '7', value: 10290.30 },
-  { day: '8', value: 10500.90 },
-  { day: '9', value: 10450.40 },
-  { day: '10', value: 10620.10 },
-  { day: '11', value: 10580.75 },
-  { day: '12', value: 10740.20 },
-  { day: '13', value: 10690.80 },
-  { day: '14', value: 10810.30 },
-  { day: '15', value: 10760.50 },
-  { day: '16', value: 10920.90 },
-  { day: '17', value: 10850.40 },
-  { day: '18', value: 11050.20 },
-  { day: '19', value: 10980.60 },
-  { day: '20', value: 11150.30 },
-  { day: '21', value: 11110.80 },
-  { day: '22', value: 11280.40 },
-  { day: '23', value: 11235.10 },
-  { day: '24', value: 11420.70 },
-  { day: '25', value: 11380.20 },
-  { day: '26', value: 11550.60 },
-  { day: '27', value: 11510.90 },
-  { day: '28', value: 11680.10 },
-  { day: '29', value: 11620.40 },
-  { day: '30', value: 11800.50 },
+const periods = ["1D", "1W", "1M", "3M", "1Y", "ALL"] as const;
+
+const sideWidgets = [
+  {
+    label: "Volatility Score",
+    value: "3.1 / 10",
+    sub: "Low regime",
+    icon: Activity,
+    color: "text-emerald-400",
+    bar: 31,
+    barColor: "from-emerald-500 to-teal-500",
+  },
+  {
+    label: "Hit Rate (30d)",
+    value: "68.4%",
+    sub: "above benchmark",
+    icon: Target,
+    color: "text-indigo-400",
+    bar: 68,
+    barColor: "from-indigo-500 to-blue-500",
+  },
+  {
+    label: "Correlation Index",
+    value: "0.74",
+    sub: "high coherence",
+    icon: Zap,
+    color: "text-amber-400",
+    bar: 74,
+    barColor: "from-amber-500 to-orange-500",
+  },
 ];
 
 export default function LivePreview() {
-  const [activeTab, setActiveTab] = useState("1M");
+  const [activePeriod, setActivePeriod] = useState("1M");
 
   return (
-    <section id="demo" className="relative scroll-mt-24 overflow-hidden py-20 lg:py-28">
-      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[min(90vw,640px)] w-[min(90vw,640px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/[0.06] blur-[100px]" />
+    <section id="demo" className="relative scroll-mt-24 overflow-hidden py-24 lg:py-32">
+      {/* Glow */}
+      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[700px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/[0.05] blur-[140px]" />
 
-      <div className="relative z-10 mx-auto max-w-7xl px-5 lg:px-8">
-        <div className="mx-auto mb-12 max-w-2xl text-center lg:mb-16">
-          <p className="section-label mb-3">Console</p>
+      <div className="relative z-10 mx-auto max-w-7xl px-5 lg:px-10">
+        {/* Header */}
+        <div className="mx-auto mb-14 max-w-2xl text-center">
+          <motion.p
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mb-4 inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/[0.07] px-3.5 py-1.5 text-xs font-semibold tracking-widest text-emerald-300"
+          >
+            LIVE TERMINAL
+          </motion.p>
           <motion.h2
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="font-display text-3xl font-bold tracking-tight text-white sm:text-4xl"
+            transition={{ duration: 0.5, delay: 0.06 }}
+            className="font-display text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl"
           >
-            One chart. Full book context.
+            One chart. Full context.
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.06 }}
-            className="mt-4 text-base text-slate-400 sm:text-lg"
+            transition={{ duration: 0.5, delay: 0.12 }}
+            className="mt-5 text-base text-slate-500 sm:text-lg"
           >
-            Equity curve, sleeve risk, and flow—all tied to the same INR marks you&apos;ll see once you connect your
-            portfolio.
+            Equity curve, volatility, and flow — tied to live INR marks.
           </motion.p>
         </div>
 
+        {/* Terminal container */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.55 }}
-          className="rounded-3xl border border-white/[0.08] bg-[#0c101c]/90 p-5 shadow-2xl backdrop-blur-xl sm:p-8 lg:p-10"
+          transition={{ duration: 0.6 }}
+          className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.7)] backdrop-blur-xl"
         >
-          <div className="mb-8 flex flex-col justify-between gap-6 lg:mb-10 lg:flex-row lg:items-end">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Total equity (INR)</p>
-              <div className="mt-1 flex flex-wrap items-baseline gap-3">
-                <span className="font-display text-3xl font-bold tabular-nums tracking-tight text-white sm:text-4xl lg:text-5xl">
-                  ₹1,00,45,009
-                </span>
-                <span className="inline-flex items-center rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-sm font-semibold tabular-nums text-emerald-400">
-                  <TrendingUp className="mr-1 h-4 w-4" /> +14.2%
-                </span>
-              </div>
+          {/* Terminal titlebar */}
+          <div className="flex items-center gap-2 border-b border-white/[0.06] bg-[#070a12]/60 px-6 py-3.5">
+            <div className="flex gap-1.5">
+              <div className="h-2.5 w-2.5 rounded-full bg-rose-500/70" />
+              <div className="h-2.5 w-2.5 rounded-full bg-amber-500/70" />
+              <div className="h-2.5 w-2.5 rounded-full bg-emerald-500/70" />
             </div>
-
-            <div className="flex flex-wrap gap-1 rounded-xl border border-white/[0.06] bg-[#070a12]/80 p-1">
-              {["1D", "1W", "1M", "3M", "1Y", "ALL"].map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm ${
-                    activeTab === tab
-                      ? "bg-indigo-600/25 text-indigo-200 shadow-sm"
-                      : "text-slate-500 hover:text-slate-300"
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
+            <span className="ml-3 font-mono text-xs text-slate-500">
+              stockcompass — portfolio terminal — [live]
+            </span>
+            <span className="ml-auto flex items-center gap-1.5 font-mono text-[10px] text-emerald-500">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
+              LIVE
+            </span>
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-4">
-            <div className="relative h-[280px] w-full min-h-[280px] lg:col-span-3 lg:h-[400px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={mockData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="liveValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.35} />
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="day"
-                    tick={{ fill: "#64748b", fontSize: 11 }}
-                    tickLine={false}
-                    axisLine={false}
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis hide domain={["auto", "auto"]} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#0c101c",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: "12px",
-                      fontSize: "13px",
-                    }}
-                    labelStyle={{ color: "#94a3b8" }}
-                    itemStyle={{ color: "#f8fafc" }}
-                    formatter={(v: number) => [`₹${v.toLocaleString("en-IN")}`, "Mark"]}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#818cf8"
-                    strokeWidth={2.5}
-                    fillOpacity={1}
-                    fill="url(#liveValue)"
-                    animationDuration={1800}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+          <div className="p-6 sm:p-8 lg:p-10">
+            {/* Top row */}
+            <div className="mb-8 flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Total equity (INR)
+                </p>
+                <div className="mt-1.5 flex flex-wrap items-baseline gap-4">
+                  <span className="font-display text-4xl font-bold tabular-nums tracking-tight text-white sm:text-5xl">
+                    ₹1,00,45,009
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/[0.08] px-3 py-1 text-sm font-bold text-emerald-400">
+                    <TrendingUp className="h-3.5 w-3.5" />
+                    +14.2% YTD
+                  </span>
+                </div>
+              </div>
+
+              {/* Period tabs */}
+              <div className="flex flex-wrap gap-1 rounded-xl border border-white/[0.06] bg-[#070a12]/80 p-1">
+                {periods.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setActivePeriod(p)}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-150 ${
+                      activePeriod === p
+                        ? "bg-indigo-600/20 text-indigo-300 shadow-sm"
+                        : "text-slate-500 hover:text-slate-300"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="flex flex-col gap-3">
-              <div className="rounded-2xl border border-white/[0.06] bg-[#070a12]/80 p-4 transition-colors hover:border-emerald-500/30">
-                <div className="mb-2 flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/15">
-                    <ArrowUpRight className="h-4 w-4 text-emerald-400" strokeWidth={2} />
-                  </div>
-                  <span className="text-xs font-medium text-slate-500">24h P&L</span>
-                </div>
-                <p className="font-display text-xl font-bold tabular-nums text-white">+₹1,24,500</p>
-              </div>
-
-              <div className="rounded-2xl border border-white/[0.06] bg-[#070a12]/80 p-4 transition-colors hover:border-rose-500/30">
-                <div className="mb-2 flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-500/15">
-                    <AlertTriangle className="h-4 w-4 text-rose-400" strokeWidth={2} />
-                  </div>
-                  <span className="text-xs font-medium text-slate-500">Book risk</span>
-                </div>
-                <p className="font-display text-xl font-bold text-white">Balanced</p>
-                <p className="mt-1 text-xs text-slate-500">VaR-aware view</p>
-                <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-800/80">
+            {/* Full-width widget row */}
+            <div className="grid gap-4 sm:grid-cols-3">
+              {sideWidgets.map((w, i) => {
+                const Icon = w.icon;
+                return (
                   <motion.div
-                    initial={{ width: 0 }}
-                    whileInView={{ width: "42%" }}
+                    key={w.label}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 1, delay: 0.4 }}
-                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-400"
-                  />
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-white/[0.06] bg-[#070a12]/80 p-4 transition-colors hover:border-blue-500/30">
-                <div className="mb-2 flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/15">
-                    <BarChart2 className="h-4 w-4 text-blue-400" strokeWidth={2} />
-                  </div>
-                  <span className="text-xs font-medium text-slate-500">Hit rate (30d)</span>
-                </div>
-                <p className="font-display text-xl font-bold tabular-nums text-white">68.4%</p>
-              </div>
+                    transition={{ duration: 0.5, delay: i * 0.1 }}
+                    className="group rounded-xl border border-white/[0.06] bg-[#070a12]/80 p-5 transition-colors hover:border-white/[0.12]"
+                  >
+                    <div className="mb-4 flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.02]">
+                        <Icon className={`h-4 w-4 ${w.color}`} strokeWidth={1.75} />
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                        {w.label}
+                      </span>
+                    </div>
+                    <p className={`font-display text-3xl font-bold tabular-nums ${w.color}`}>
+                      {w.value}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-600">{w.sub}</p>
+                    <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-slate-800/80">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        whileInView={{ width: `${w.bar}%` }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 1.4, delay: 0.4 + i * 0.1 }}
+                        className={`h-full rounded-full bg-gradient-to-r ${w.barColor}`}
+                      />
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
         </motion.div>

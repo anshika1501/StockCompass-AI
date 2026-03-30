@@ -110,9 +110,10 @@ export default function SettingsPage() {
     setSavingPassword(true);
     try {
       await updateUserSettings({
-        type: "password",
-        old_password: oldPassword,
+        action: "change_password",
+        current_password: oldPassword,
         new_password: newPassword,
+        confirm_password: confirmPassword,
       });
       toast({ title: "Password updated successfully" });
       setOldPassword("");
@@ -138,9 +139,10 @@ export default function SettingsPage() {
     setSavingMpin(true);
     try {
       await updateUserSettings({
-        type: "mpin",
-        old_mpin: oldMpin,
+        action: "change_mpin",
+        current_mpin: oldMpin,
         new_mpin: newMpin,
+        confirm_mpin: confirmMpin,
       });
       toast({ title: hasMpin ? "MPIN updated successfully" : "MPIN set successfully" });
       setHasMpin(true);
@@ -159,7 +161,7 @@ export default function SettingsPage() {
     setSavingTelegram(true);
     try {
       const res = await updateUserSettings({
-        type: "telegram",
+        action: "update_telegram",
         telegram_id: telegramId,
       });
       toast({ title: res.message || "Telegram ID updated successfully" });
