@@ -38,7 +38,7 @@ jobs:
             source venv/bin/activate
             pip install -r requirements.txt
             python manage.py migrate
-            # python manage.py init_stocks --update-prices --period 1mo # only for first time
+            python manage.py init_stocks --update-prices --period 1mo
             pm2 delete StockCompass-AI-backend || echo "backend not found"
             pm2 start "python manage.py runserver 0.0.0.0:8002" --name StockCompass-AI-backend
 
