@@ -396,7 +396,15 @@ The frontend uses environment variables to dictate base paths for API requests.
 **Frontend (`frontend/.env.local`)**
 - `NEXT_PUBLIC_API_URL`: The root URL attached to all backend API calls (e.g., login, registering, fetching trajectory datasets). When running locally, this should always be `http://127.0.0.1:8000/api`.
 
-*(Backend environment variables live in `backend/.env` as shown above).*
+*(Backend environment variables live in `backend/.env` as shown above).* 
+
+## Images
+
+Below are a couple of screenshots from the app:
+
+![Landing screen](./pictures/landing.png)
+
+![Login screen](./pictures/login.png)
 
 ---
 
